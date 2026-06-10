@@ -1,0 +1,13 @@
+# Python generated files
+__pycache__/
+*.py[cod]
+
+# Local tool scratch data
+.superpowers/
+
+# Common editor and operating-system files
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+

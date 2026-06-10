@@ -1,32 +1,60 @@
-# Monopoly Mini-Game Review
+# Monopoly Mini-game Review
 
-Review date: 2026-06-09
+## Correctness Fixes
 
-## Issues Fixed
+- 修复固定加价拍卖：真人可输入自定义整数报价，并校验最低报价、现金上限和空值。
+- 增加竞拍状态反馈：明确显示其他竞拍者数量；无人竞争时提示有效出价将立即成交。
+- 修复 AI 拒绝直购后地产被跳过的问题：现在统一进入公开拍卖。
+- 新增受限地产交易：每回合掷骰前一次，可交换地产、现金和出狱卡，最多还价两轮。
+- 交易采用成交前二次校验和原子交割，避免资产变化后出现部分转移。
+- 修复开发规则漂移：真人和 AI 共用 `canBuildHouse`，完整色组内存在抵押地产时均禁止开发。
+- 新增防僵局档位：连续 3/5 个无成交或建造的完整轮次后，仅降低 AI 利润要求，不降低现金安全线。
+- 修复首名玩家破产即结束游戏：破产者退出后续系统，仅剩一名有效玩家时才结束。
+- 修复真人负债时系统强制选择资产的问题：新增阻塞式债务处置中心，由玩家自主出售建筑或抵押地产；偿清后恢复原流程，无合法操作时才自动破产。
 
-- `run.bat` launched `gen.py`, which does not exist. It now launches `monopoly_app.py`.
-- Human player names were inserted into `innerHTML` without sanitization. Names are now stripped of markup characters and escaped before rendering.
-- Several UI paths rendered the board twice in a row (`renderBoard(); updateUI();` while `updateUI` also rendered the board). `updateUI` now supports `refreshBoard: false` for call sites that already redrew the board.
-- Landing on "go to jail" after rolling doubles could preserve the double-turn behavior. Jail sends now end the turn normally.
-- Rent bankruptcy always transferred assets to the richest opponent instead of the creditor. Bankruptcy now prefers the creditor when provided.
-- Card side effects could make other players negative without bankruptcy checks. Card resolution now checks all affected players.
-- Mobile layout could rely on hidden overflow because the wrapper plus board chrome exceeded the viewport. The mobile board and wrapper sizing now fit within the viewport.
+## Performance Optimizations
 
-## Verified Behavior
+- AI 交易候选按对手生成单个最高价值目标，再排序选择，避免枚举所有资产组合。
+- AI-only 拍卖可直接计算赢家和成交价，减少无意义的逐次延迟。
+- 日志保留最近 200 条，避免长局中 DOM 和内存无限增长。
+- 棋盘更新支持仅刷新侧栏，降低交易、日志和资金变化时的重复渲染。
 
-- Game page parses without JavaScript syntax errors.
-- Launcher Python compiles successfully.
-- Browser setup flow starts the game and renders 40 board cells.
-- Custom names containing markup are sanitized and do not execute or inject HTML.
-- Rent rules for monopoly, house level, and mortgaged property behave as expected.
-- Even-building rules still prevent upgrading one property twice before its group partner.
-- Bankruptcy transfers property to the creditor when a creditor exists.
-- Desktop and mobile viewport checks show no horizontal document overflow.
+## Functional Test Coverage
 
-## Remaining Optimization Opportunities
+- 交易资格、抵押地产、建筑色组限制和异常报价规范化。
+- 现金、地产、出狱卡的原子交割及失败回滚。
+- AI 色组补齐估值、抵押折价、现金安全线、还价上限和防僵局阈值。
+- 真人/AI 抵押组开发限制与 AI 拒购转拍卖。
+- 交易窗口锁定、热座交接和响应式交易面板。
+- 玩家淘汰、最后存活者判定、债权资产转移和无债权清算队列。
 
-- Split the single large HTML file into separate CSS and JavaScript modules for maintainability.
-- Replace inline `onclick` attributes with delegated event listeners to reduce global coupling.
-- Add deterministic dice/card test hooks so full turn flows can be tested without browser protocol state injection.
-- Track the actual creditor for more payment types if future rules add player-to-player card payments beyond the current coverage.
-- Add a small favicon or serve `/favicon.ico` with the static server to avoid harmless 404 noise during local static testing.
+## Edge Cases
+
+- 交易期间禁止掷骰，资产失效时整笔交易取消。
+- 已破产玩家不再参与回合、交易或拍卖。
+- 抵押地产交易后不自动解押。
+- 无人出价时地产流拍，不会免费分配给现金最多者。
+- 防僵局计数只在所有有效玩家完成一轮后推进，成交或建造会立即重置。
+
+## UX Evaluation
+
+- 地产面板和角色日志位于棋盘右侧；窄屏下改为纵向布局。
+- 日志支持滚轮、触摸滑动、滚动条拖拽、自动跟随及新日志提示。
+- 扣款提示移至右上角，避免遮挡骰子动画。
+- 拍卖输入提供范围说明、即时错误提示和回车提交。
+- 破产玩家在角色列表中置灰并显示“已破产”。
+
+## Remaining Balance Risks
+
+- AI 估值是启发式模型，复杂的多地产换购仍可能低估协同价值。
+- 防僵局阈值 3/5 轮需通过长局样本继续观察，避免 AI 在特定地图分布下过早让利。
+- 破产清算地产保留原抵押状态；该规则会压低拍卖吸引力，后续可根据实测决定是否由银行解除抵押。
+- AI 每回合最多主动提出一个最佳交易，性能稳定，但可能错过次优的多资产组合。
+
+## Verification Evidence
+
+- `node --test tests/*.mjs`
+- `python -m py_compile monopoly_app.py`
+- 提取 `monopoly.html` 内联脚本后执行 `node --check`
+- `git diff --check`
+- 桌面与移动视口浏览器交互和布局验证
