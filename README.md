@@ -50,6 +50,54 @@ python -m py_compile monopoly_app.py
 修改 `monopoly.html` 中的 JavaScript 后，还应提取内联脚本并运行
 `node --check`，同时执行 `git diff --check`。
 
+## Render 免费部署
+
+联机版服务可通过仓库根目录的 `render.yaml` 部署到 Render Free Web Service。
+
+部署入口：
+
+```text
+render.yaml
+docs/superpowers/workflow/render-free-deployment.md
+```
+
+关键配置：
+
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `uvicorn server.app:app --host 0.0.0.0 --port $PORT --no-access-log --log-level warning`
+- Health Check Path: `/healthz`
+- Required environment: `APP_ENV=production`
+- Required Render setting: `ALLOWED_ORIGINS`
+
+`ALLOWED_ORIGINS` 必须配置为 Render 分配域名或自定义域名的 Origin，例如：
+
+```text
+https://online-monopoly.onrender.com
+```
+
+旧单机入口仍保留，可继续使用 `python monopoly_app.py` 本地运行。
+
+生产部署禁用 Uvicorn access log，并将 Uvicorn 自身日志级别调到 warning，避免 WebSocket 重连 token 出现在平台日志中。
+
+## 联机版发布验收
+
+联机版验收记录位于：
+
+```text
+docs/superpowers/changelogs/2026-06-11-online-multiplayer-changelog.md
+```
+
+关键检查包括：
+
+```powershell
+python -m pytest tests/integration/test_full_game.py -q
+python -m pytest tests/server/test_deployment_config.py -q
+python -m pytest -q
+node --test tests/*.mjs
+```
+
+完整公网验收仍需要真实 Render URL，用于记录冷启动、跨网络加入同房间、浏览器控制台和服务器日志。
+
 ## 双 AI 协作
 
 每轮工作开始前，先阅读：

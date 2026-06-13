@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>大富翁联机大厅</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <h1>大富翁联机</h1>
+        <p id="connection-label">未连接</p>
+      </div>
+      <div id="room-chip" class="room-chip">大厅</div>
+    </header>
+
+    <!-- 入口区域：创建/加入 -->
+    <section id="entry-section" class="entry-grid">
+      <section class="create-section">
+        <h2>创建房间</h2>
+        <label for="create-nickname">昵称</label>
+        <input type="text" id="create-nickname" maxlength="12" placeholder="输入昵称（1-12字）">
+        <button id="create-btn">创建房间</button>
+      </section>
+
+      <section class="join-section">
+        <h2>加入房间</h2>
+        <label for="join-nickname">昵称</label>
+        <input type="text" id="join-nickname" maxlength="12" placeholder="输入昵称（1-12字）">
+        <label for="room-code">房间码</label>
+        <input type="text" id="room-code" maxlength="6" placeholder="6位房间码">
+        <button id="join-btn">加入房间</button>
+      </section>
+    </section>
+
+    <!-- 房间内区域：玩家列表、准备、开始 -->
+    <section id="room-section" style="display:none">
+      <h2 id="room-title">房间</h2>
+      <div id="player-list" class="player-list"></div>
+      <button id="ready-btn">准备</button>
+      <button id="start-btn" disabled>开始游戏</button>
+      <button id="leave-btn">离开房间</button>
+    </section>
+
+    <section id="game-section" class="online-game-shell" style="display:none">
+      <aside class="online-panel">
+        <h2>玩家</h2>
+        <div id="online-player-list" class="online-player-list"></div>
+      </aside>
+
+      <section class="board-zone">
+        <div id="online-board" class="online-board" aria-label="联机棋盘"></div>
+        <div id="online-action-bar" class="online-action-bar">
+          <button id="online-roll-btn" type="button" title="掷骰">掷骰</button>
+          <button id="online-buy-btn" type="button">购买</button>
+          <button id="online-decline-btn" type="button">拍卖</button>
+          <button id="online-trade-btn" type="button">交易</button>
+          <button id="online-build-btn" type="button">建造</button>
+          <button id="online-mortgage-btn" type="button">抵押</button>
+          <button id="online-unmortgage-btn" type="button">解押</button>
+        </div>
+      </section>
+
+      <aside class="online-panel">
+        <h2>资产</h2>
+        <div id="online-property-list" class="online-property-list"></div>
+        <h2>事件</h2>
+        <div id="online-event-log" class="online-event-log" aria-live="polite"></div>
+      </aside>
+    </section>
+
+    <div id="online-modal-root" class="modal-root" aria-live="polite"></div>
+    <div id="status" class="status-area"></div>
+    <div id="error" class="error-area"></div>
+  </main>
+
+  <script src="/static/js/storage.js"></script>
+  <script src="/static/js/network.js"></script>
+  <script src="/static/js/lobby.js"></script>
+  <script src="/static/js/game-renderer.js"></script>
+  <script src="/static/js/actions.js"></script>
+  <script src="/static/js/modals.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

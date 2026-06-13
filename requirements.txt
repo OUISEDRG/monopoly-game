@@ -2,4 +2,6 @@ fastapi
 uvicorn[standard]
 websockets
 pytest
+pytest-asyncio
 httpx
+pyyaml
