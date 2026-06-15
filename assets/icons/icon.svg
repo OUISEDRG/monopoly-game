@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">大富翁单机版</title>
+  <desc id="desc">深色棋盘和金色骰子的手机应用图标</desc>
+  <rect width="512" height="512" rx="112" fill="#0a0a15"/>
+  <rect x="42" y="42" width="428" height="428" rx="84" fill="#1a1a2e" stroke="#c9a84c" stroke-width="18"/>
+  <path d="M118 340h276" stroke="#8b6914" stroke-width="18" stroke-linecap="round"/>
+  <path d="M130 170h252M130 226h252M130 282h252" stroke="#2f3f63" stroke-width="12" stroke-linecap="round"/>
+  <g transform="rotate(-10 256 250)">
+    <rect x="154" y="146" width="204" height="204" rx="38" fill="#f5ecd7" stroke="#c9a84c" stroke-width="12"/>
+    <circle cx="208" cy="200" r="17" fill="#1a1a2e"/>
+    <circle cx="304" cy="200" r="17" fill="#1a1a2e"/>
+    <circle cx="256" cy="250" r="17" fill="#1a1a2e"/>
+    <circle cx="208" cy="300" r="17" fill="#1a1a2e"/>
+    <circle cx="304" cy="300" r="17" fill="#1a1a2e"/>
+  </g>
+  <text x="256" y="414" text-anchor="middle" font-family="serif" font-size="62" font-weight="700" fill="#e0c97f">大富翁</text>
+</svg>

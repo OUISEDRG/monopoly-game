@@ -1,0 +1,4627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大富翁 - Monopoly</title>
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="大富翁">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./assets/icons/icon.svg" type="image/svg+xml">
+<style>
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('./assets/fonts/noto-400.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('./assets/fonts/noto-600.ttf') format('truetype');
+  font-weight: 600 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('./assets/fonts/cormorant-600.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('./assets/fonts/cormorant-700.ttf') format('truetype');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --gold: #c9a84c;
+  --gold-light: #e0c97f;
+  --gold-dark: #8b6914;
+  --bg: #1a1a2e;
+  --text: #e8d5b7;
+  --text-light: #f5ecd7;
+  --red: #c0392b;
+  --red-light: #e74c3c;
+  --green: #27ae60;
+  --blue: #2980b9;
+  --orange: #e67e22;
+  --pink: #e84393;
+  --brown: #8b4513;
+  --light-blue: #87ceeb;
+  --dark-blue: #1a237e;
+  --railroad: #555;
+  --utility: #aaa;
+  --p4-yellow: #f1c40f;
+  --p4-green: #27ae60;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a15 70%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Noto Serif SC', 'Playfair Display', serif;
+  overflow-x: hidden;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(201,168,76,0.025) 2px, rgba(201,168,76,0.025) 4px),
+    repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(201,168,76,0.025) 2px, rgba(201,168,76,0.025) 4px),
+    radial-gradient(ellipse at 30% 20%, rgba(201,168,76,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(201,168,76,0.03) 0%, transparent 50%);
+}
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.6;
+}
+
+.game-wrapper { display: flex; gap: 24px; align-items: flex-start; padding: 20px; position: relative; z-index: 1; }
+
+.side-panel,
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 260px;
+  min-width: 240px;
+  max-width: 280px;
+}
+
+.right-panel #propertyPanel {
+  width: 100%;
+}
+
+.log-panel {
+  width: 100%;
+  min-height: 260px;
+}
+
+.game-log-list {
+  height: 360px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-dark) rgba(255,255,255,0.04);
+  padding-right: 6px;
+  scroll-behavior: smooth;
+}
+
+.game-log-list::-webkit-scrollbar { width: 8px; }
+.game-log-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); border-radius: 4px; }
+.game-log-list::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 4px; }
+
+.game-log-empty {
+  color: rgba(232,213,183,0.45);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  padding: 18px 4px;
+  text-align: center;
+}
+
+.game-log-entry {
+  display: grid;
+  grid-template-columns: 38px 18px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+  padding: 9px 2px;
+  border-bottom: 1px solid rgba(201,168,76,0.13);
+}
+
+.game-log-entry:last-child { border-bottom: none; }
+.game-log-time { color: rgba(232,213,183,0.42); font-size: 0.65rem; line-height: 1.5; }
+.game-log-icon { font-size: 0.78rem; line-height: 1.35; text-align: center; }
+.game-log-copy { min-width: 0; font-size: 0.7rem; line-height: 1.5; color: var(--text); overflow-wrap: anywhere; }
+.game-log-actor { color: var(--text-light); font-weight: 700; margin-right: 4px; }
+.game-log-entry.type-gain .game-log-copy { color: #82e0aa; }
+.game-log-entry.type-loss .game-log-copy { color: #ff9b90; }
+.game-log-entry.type-property .game-log-copy,
+.game-log-entry.type-building .game-log-copy,
+.game-log-entry.type-auction .game-log-copy { color: var(--gold-light); }
+.game-log-entry.type-jail .game-log-copy { color: #f5b56b; }
+.game-log-entry.type-card .game-log-copy { color: #8fd3ff; }
+.game-log-entry.type-system .game-log-copy { color: rgba(232,213,183,0.72); }
+
+.game-log-new {
+  display: none;
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--gold-dark);
+  border-radius: 6px;
+  background: rgba(201,168,76,0.12);
+  color: var(--gold-light);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.game-log-new.visible { display: block; animation: fadeIn 0.2s ease-out; }
+
+.panel-card {
+  background: linear-gradient(135deg, #1e2a3a 0%, #162030 100%);
+  border: 2px solid var(--gold-dark);
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,168,76,0.1);
+}
+
+.panel-card::before, .panel-card::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold-light), transparent);
+}
+.panel-card::before { top: 0; }
+.panel-card::after { bottom: 0; }
+
+.panel-title {
+  font-family: 'Playfair Display', serif;
+  color: var(--gold);
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(201,168,76,0.15);
+  transition: all 0.3s;
+  margin-bottom: 6px;
+}
+
+.player-item.active {
+  border-color: var(--gold);
+  background: rgba(201,168,76,0.08);
+  box-shadow: 0 0 20px rgba(201,168,76,0.15);
+}
+
+.player-token {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1rem;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+  position: relative;
+}
+
+.player-token::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+.player-details { flex: 1; min-width: 0; }
+.player-name { color: var(--text-light); font-weight: 600; font-size: 0.9rem; }
+.player-money {
+  color: var(--gold-light);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.player-props { color: rgba(232,213,183,0.5); font-size: 0.7rem; margin-top: 2px; }
+
+/* ===== BOARD ===== */
+.board-outer {
+  background: linear-gradient(135deg, #1a2744 0%, #0d1b36 100%);
+  border: 4px solid var(--gold-dark);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 0 40px rgba(201,168,76,0.15), 0 10px 40px rgba(0,0,0,0.6), inset 0 0 30px rgba(0,0,0,0.3);
+}
+
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(11, 1fr);
+  grid-template-rows: repeat(11, 1fr);
+  width: 660px; height: 660px;
+  gap: 2px;
+  position: relative;
+}
+
+.center-area {
+  grid-column: 2 / 11; grid-row: 2 / 11;
+  background: linear-gradient(135deg, #0d1b36 0%, #091428 100%);
+  border: 2px solid rgba(201,168,76,0.2);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.center-area::before {
+  content: '大 富 翁';
+  position: absolute;
+  font-family: 'Playfair Display', serif;
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: rgba(201,168,76,0.08);
+  letter-spacing: 10px;
+  transform: rotate(-15deg);
+  white-space: nowrap;
+}
+
+.game-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--gold);
+  text-align: center;
+  letter-spacing: 6px;
+  text-shadow: 0 0 20px rgba(201,168,76,0.3);
+  z-index: 1;
+}
+
+.game-logo .sub { display: block; font-size: 0.7rem; letter-spacing: 4px; font-weight: 400; color: rgba(201,168,76,0.6); }
+
+.dice-container { display: flex; justify-content: center; gap: 14px; margin: 8px 0; }
+
+.dice {
+  width: 52px; height: 52px;
+  background: linear-gradient(145deg, #faf3e0, #e8d5b7);
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 6px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5), inset 0 -2px 3px rgba(0,0,0,0.1);
+  align-items: center; justify-items: center;
+}
+
+.dice.rolling { animation: diceRoll 0.5s ease-out; }
+
+@keyframes diceRoll {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(90deg) scale(1.15); }
+  50% { transform: rotate(200deg) scale(1.1); }
+  75% { transform: rotate(310deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.dot { width: 10px; height: 10px; background: #2c1810; border-radius: 50%; }
+
+.btn-roll {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: #1a1a2e;
+  border: none;
+  padding: 12px 36px;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 50px;
+  cursor: pointer;
+  letter-spacing: 3px;
+  box-shadow: 0 4px 15px rgba(201,168,76,0.3);
+  transition: all 0.3s;
+  z-index: 1;
+}
+
+.btn-roll:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(201,168,76,0.5); }
+.btn-roll:active { transform: translateY(0); }
+.btn-roll:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.game-status { color: var(--text); font-size: 0.85rem; text-align: center; z-index: 1; min-height: 1.5em; }
+
+/* ===== CELLS ===== */
+.cell {
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(201,168,76,0.1);
+}
+
+.cell:hover { z-index: 10; transform: scale(1.08); box-shadow: 0 0 15px rgba(201,168,76,0.3); }
+
+.cell .color-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; }
+.cell .cell-name {
+  font-weight: 700;
+  line-height: 1.2;
+  font-size: 0.55rem;
+  color: #f0e6d3;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  padding: 0 2px;
+}
+.cell .cell-price { font-size: 0.4rem; color: rgba(255,255,255,0.55); }
+
+/* Color-coded cell names by property group */
+.cell.property .cell-name { color: #f0e6d3; }
+.cell.corner .cell-name { color: #e0c97f; font-size: 0.65rem; text-shadow: 0 0 6px rgba(201,168,76,0.4); }
+.cell.chance .cell-name { color: #f5a098; }
+.cell.chest .cell-name { color: #82e0aa; }
+.cell.tax .cell-name { color: #f0c0a0; }
+.cell.railroad .cell-name { color: #c0c0c0; }
+.cell.utility .cell-name { color: #e0d8c8; }
+
+.cell.corner { font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; background: rgba(201,168,76,0.08) !important; border-color: rgba(201,168,76,0.3); }
+.cell.property { background: rgba(255,255,255,0.03); }
+.cell.chance { background: rgba(231,76,60,0.08); border-color: rgba(231,76,60,0.2); }
+.cell.chest { background: rgba(46,204,113,0.08); border-color: rgba(46,204,113,0.2); }
+.cell.tax { background: rgba(255,255,255,0.05); }
+.cell.railroad { background: rgba(255,255,255,0.05); }
+.cell.utility { background: rgba(255,255,255,0.05); }
+
+.cell .tokens-on-cell { display: flex; gap: 1px; position: absolute; top: 2px; }
+.cell .mini-token { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.5); }
+
+.cell.owned { box-shadow: inset 0 0 8px rgba(201,168,76,0.2); }
+
+/* Teleport mode highlight */
+.cell.teleport-target {
+  animation: teleportPulse 0.8s ease-in-out infinite;
+  border-color: rgba(46, 204, 113, 0.5) !important;
+  box-shadow: 0 0 12px rgba(46, 204, 113, 0.3), inset 0 0 8px rgba(46, 204, 113, 0.1);
+}
+
+.cell.teleport-target:hover {
+  border-color: rgba(46, 204, 113, 0.9) !important;
+  box-shadow: 0 0 25px rgba(46, 204, 113, 0.6), inset 0 0 15px rgba(46, 204, 113, 0.2);
+  transform: scale(1.1);
+  z-index: 15;
+}
+
+@keyframes teleportPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(46, 204, 113, 0.2), inset 0 0 6px rgba(46, 204, 113, 0.08); }
+  50% { box-shadow: 0 0 18px rgba(46, 204, 113, 0.45), inset 0 0 12px rgba(46, 204, 113, 0.15); }
+}
+
+/* House icons */
+.cell .houses-row {
+  display: flex;
+  gap: 1px;
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.cell .house-icon {
+  width: 6px; height: 6px;
+  background: #2ecc71;
+  border: 1px solid #27ae60;
+  clip-path: polygon(0% 100%, 0% 40%, 50% 0%, 100% 40%, 100% 100%);
+}
+
+.cell .hotel-icon {
+  width: 10px; height: 7px;
+  background: #e74c3c;
+  border: 1px solid #c0392b;
+  border-radius: 2px;
+}
+
+/* ===== CELL HIGHLIGHT ===== */
+.cell.current-pos {
+  animation: cellGlow 1.2s ease-in-out infinite;
+  z-index: 5;
+}
+
+@keyframes cellGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(201,168,76,0.4), inset 0 0 8px rgba(201,168,76,0.15); }
+  50% { box-shadow: 0 0 20px rgba(201,168,76,0.8), 0 0 35px rgba(201,168,76,0.4), inset 0 0 15px rgba(201,168,76,0.25); }
+}
+
+/* ===== PENALTY ANIMATION ===== */
+#penaltyContainer {
+  position: fixed;
+  top: clamp(76px, 9vh, 112px);
+  right: clamp(16px, 2.5vw, 38px);
+  z-index: 270;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.penalty-overlay {
+  width: min(310px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.penalty-burst {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 68px;
+  padding: 12px 18px 12px 16px;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(45,20,25,0.98), rgba(27,23,33,0.98));
+  border: 1px solid rgba(255,97,88,0.65);
+  border-left: 4px solid #ff4f45;
+  border-radius: 6px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.52), 0 0 20px rgba(231,76,60,0.16);
+  animation: penaltySlideIn 0.38s cubic-bezier(0.2, 0.85, 0.25, 1);
+}
+
+.penalty-amount {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.35rem;
+  line-height: 1;
+  font-weight: 900;
+  color: #ff6259;
+  text-shadow: 0 0 18px rgba(231,76,60,0.42), 0 3px 8px rgba(0,0,0,0.45);
+  white-space: nowrap;
+}
+
+.penalty-label {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.penalty-overlay.fade-out {
+  animation: penaltySlideOut 0.28s ease-in forwards;
+}
+
+@keyframes penaltySlideIn {
+  from { transform: translateX(calc(100% + 48px)); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes penaltySlideOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(calc(100% + 48px)); opacity: 0; }
+}
+
+/* ===== DICE RESULT OVERLAY ===== */
+.dice-result-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 250;
+  pointer-events: none;
+  animation: diceResultIn 0.3s ease-out;
+}
+
+.dice-result-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(135deg, #1e2a3a 0%, #162030 100%);
+  border: 3px solid var(--gold);
+  border-radius: 20px;
+  padding: 24px 40px;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.6), 0 0 60px rgba(201,168,76,0.25);
+}
+
+.dice-result-dice { display: flex; gap: 12px; }
+
+.dice-result-die {
+  width: 64px; height: 64px;
+  background: linear-gradient(145deg, #faf3e0, #e8d5b7);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5), inset 0 -3px 4px rgba(0,0,0,0.1);
+  align-items: center; justify-items: center;
+  animation: dicePopIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dice-result-die:nth-child(2) { animation-delay: 0.15s; }
+.dice-result-die .rdot { width: 13px; height: 13px; background: #2c1810; border-radius: 50%; }
+
+@keyframes dicePopIn {
+  0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.dice-result-info { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+.dice-result-total {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+  text-shadow: 0 0 15px rgba(201,168,76,0.4);
+}
+
+.dice-result-label { font-size: 0.8rem; color: var(--text); letter-spacing: 2px; }
+.dice-result-double { font-family: 'Playfair Display', serif; font-size: 0.9rem; color: var(--gold-light); letter-spacing: 3px; animation: doublePulse 0.8s ease-in-out infinite; }
+
+@keyframes doublePulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes diceResultIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+.dice-result-overlay.fade-out { animation: diceResultOut 0.3s ease-out forwards; }
+@keyframes diceResultOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.9); } }
+
+/* ===== MOVING TOKEN ===== */
+.moving-token {
+  position: absolute;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  z-index: 20;
+  pointer-events: none;
+  box-shadow: 0 0 15px currentColor, 0 2px 8px rgba(0,0,0,0.5);
+  transition: left 0.18s ease-out, top 0.18s ease-out;
+  border: 2px solid rgba(255,255,255,0.5);
+}
+
+.path-trace {
+  position: absolute;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  z-index: 8;
+  pointer-events: none;
+  animation: traceFade 0.6s ease-out forwards;
+}
+
+@keyframes traceFade {
+  0% { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.3); }
+}
+
+/* ===== SETUP MODAL ===== */
+.setup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  animation: fadeIn 0.5s;
+}
+
+.setup-card {
+  background: linear-gradient(135deg, #1e2a3a 0%, #162030 100%);
+  border: 3px solid var(--gold);
+  border-radius: 20px;
+  padding: 40px 50px;
+  box-shadow: 0 0 80px rgba(201,168,76,0.2), 0 20px 60px rgba(0,0,0,0.5);
+  animation: slideUp 0.5s ease-out;
+  text-align: center;
+  max-width: 480px;
+  width: 90%;
+}
+
+.setup-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 4px;
+  margin-bottom: 8px;
+}
+
+.setup-subtitle {
+  font-size: 0.8rem;
+  color: var(--text);
+  margin-bottom: 24px;
+  letter-spacing: 2px;
+}
+
+.setup-players {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.setup-player-btn {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: 2px solid rgba(201,168,76,0.3);
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.setup-player-btn:hover { border-color: var(--gold); background: rgba(201,168,76,0.1); }
+.setup-player-btn.selected { border-color: var(--gold); background: rgba(201,168,76,0.2); box-shadow: 0 0 20px rgba(201,168,76,0.3); color: var(--gold-light); }
+
+.setup-description {
+  font-size: 0.75rem;
+  color: rgba(232,213,183,0.6);
+  line-height: 1.8;
+  margin-bottom: 24px;
+}
+
+.setup-description strong { color: var(--gold-light); }
+
+.setup-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text);
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+.setup-check input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+.btn-start {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: #1a1a2e;
+  border: none;
+  padding: 14px 48px;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-radius: 50px;
+  cursor: pointer;
+  letter-spacing: 4px;
+  box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+  transition: all 0.3s;
+}
+
+.btn-start:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(201,168,76,0.5); }
+.btn-start:active { transform: translateY(0); }
+
+/* ===== HOUSE UPGRADE PANEL ===== */
+.house-upgrade-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(201,168,76,0.1);
+  font-size: 0.65rem;
+  color: var(--text);
+}
+
+.house-upgrade-item .prop-info { flex: 1; }
+.house-upgrade-item .prop-name-u { font-weight: 600; color: var(--text-light); }
+.house-upgrade-item .prop-houses { font-size: 0.6rem; color: rgba(232,213,183,0.5); }
+
+.btn-house {
+  padding: 3px 10px;
+  font-size: 0.6rem;
+  border-radius: 4px;
+  border: 1px solid var(--gold);
+  background: transparent;
+  color: var(--gold-light);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-house:hover { background: rgba(201,168,76,0.15); }
+.btn-house:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.2s;
+}
+
+.modal-overlay.hidden { display: none; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-card {
+  background: linear-gradient(135deg, #1e2a3a 0%, #162030 100%);
+  border: 3px solid var(--gold);
+  border-radius: 16px;
+  padding: 30px;
+  max-width: 380px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(201,168,76,0.15);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.modal-title {
+  font-family: 'Playfair Display', serif;
+  color: var(--gold);
+  font-size: 1.6rem;
+  text-align: center;
+  margin-bottom: 16px;
+  letter-spacing: 2px;
+}
+
+.modal-body { color: var(--text); text-align: center; line-height: 1.8; margin-bottom: 20px; }
+.modal-body .prop-name { font-size: 1.2rem; font-weight: 700; color: var(--gold-light); }
+.modal-body .prop-price { font-size: 0.9rem; color: var(--text); }
+
+.auction-bid-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  max-width: 280px;
+  margin: 14px auto 6px;
+}
+
+.auction-bid-prefix {
+  color: var(--gold-light);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.auction-bid-input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(201,168,76,0.45);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-light);
+  font: inherit;
+  font-size: 1rem;
+  text-align: right;
+  outline: none;
+}
+
+.auction-bid-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.12); }
+.auction-bid-input.invalid { border-color: var(--red-light); }
+.auction-bid-help { min-height: 1.4em; font-size: 0.72rem; color: rgba(232,213,183,0.65); }
+.auction-bid-error { min-height: 1.4em; font-size: 0.72rem; color: #ff8f83; }
+.auction-status { margin-top: 8px; font-size: 0.75rem; color: var(--gold-light); }
+
+.modal-buttons { display: flex; gap: 12px; justify-content: center; }
+
+.trade-card { width: min(760px, 94vw); max-width: 760px; max-height: 90vh; overflow: hidden; padding: 24px; }
+.trade-toolbar { display: grid; grid-template-columns: auto minmax(140px, 1fr) auto; gap: 10px; align-items: center; margin-bottom: 14px; color: var(--text); font-size: 0.78rem; }
+.trade-toolbar select, .trade-money { min-width: 0; border: 1px solid rgba(201,168,76,0.45); border-radius: 6px; background: rgba(255,255,255,0.06); color: var(--text-light); padding: 8px 10px; font: inherit; }
+.trade-toolbar option { color: #172235; }
+.trade-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.trade-side { min-width: 0; text-align: left; }
+.trade-side h3 { color: var(--gold-light); font-size: 0.9rem; margin-bottom: 8px; text-align: center; }
+.trade-asset-list { height: min(30vh, 240px); overflow-y: auto; overscroll-behavior: contain; border: 1px solid rgba(201,168,76,0.18); border-radius: 6px; padding: 4px 10px; margin-bottom: 10px; }
+.trade-asset-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 42px; border-bottom: 1px solid rgba(201,168,76,0.13); font-size: 0.72rem; }
+.trade-asset-row:last-child { border-bottom: none; }
+.trade-asset-row small { display: block; color: rgba(232,213,183,0.52); }
+.trade-input-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; margin: 8px 0; font-size: 0.72rem; }
+.trade-check { display: flex; gap: 8px; align-items: center; font-size: 0.72rem; }
+.trade-summary { min-height: 24px; margin: 12px 0 4px; color: var(--gold-light); font-size: 0.75rem; text-align: center; }
+.trade-error { min-height: 22px; color: #ff8f83; font-size: 0.72rem; text-align: center; }
+.trade-empty { padding: 18px 4px; text-align: center; color: rgba(232,213,183,0.45); font-size: 0.72rem; }
+.btn-trade { padding: 8px 22px; font-size: 0.78rem; background: transparent; color: var(--gold-light); border: 1px solid var(--gold); }
+
+.btn {
+  padding: 10px 28px;
+  border-radius: 50px;
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.3s;
+  border: none;
+}
+
+.btn-primary { background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: #1a1a2e; }
+.btn-primary:hover { box-shadow: 0 4px 15px rgba(201,168,76,0.4); transform: translateY(-1px); }
+.btn-secondary { background: transparent; border: 1px solid rgba(201,168,76,0.4); color: var(--text); }
+.btn-secondary:hover { background: rgba(201,168,76,0.08); }
+
+/* ===== NOTIFICATION ===== */
+.notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #1e2a3a, #162030);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  padding: 14px 28px;
+  color: var(--text-light);
+  font-family: 'Noto Serif SC', serif;
+  z-index: 200;
+  animation: notifIn 0.3s ease-out;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  text-align: center;
+  max-width: 500px;
+}
+
+.notification.fade-out { animation: notifOut 0.3s ease-out forwards; }
+
+@keyframes notifIn { from { transform: translateX(-50%) translateY(-20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+@keyframes notifOut { from { transform: translateX(-50%) translateY(0); opacity: 1; } to { transform: translateX(-50%) translateY(-20px); opacity: 0; } }
+
+/* ===== GAME OVER ===== */
+.game-over-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  animation: fadeIn 0.5s;
+}
+
+.game-over-card {
+  background: linear-gradient(135deg, #1e2a3a, #162030);
+  border: 3px solid var(--gold);
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 0 80px rgba(201,168,76,0.2);
+  animation: slideUp 0.5s ease-out;
+}
+
+.game-over-title { font-family: 'Playfair Display', serif; font-size: 2.5rem; color: var(--gold); letter-spacing: 4px; margin-bottom: 12px; }
+.game-over-winner { font-size: 1.4rem; color: var(--text-light); margin-bottom: 24px; }
+
+@media (max-width: 1350px) {
+  .game-wrapper { gap: 16px; }
+  .side-panel,
+  .right-panel { width: 240px; }
+}
+
+@media (max-width: 1000px) {
+  .game-wrapper { flex-direction: column; align-items: center; width: 100%; padding: 12px; }
+  .side-panel,
+  .right-panel {
+    flex-direction: row;
+    min-width: auto;
+    max-width: none;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .side-panel .panel-card { flex: 1; min-width: 200px; }
+  .right-panel .panel-card { width: min(100%, 560px); }
+  .game-log-list { height: min(42vh, 360px); }
+  .board-grid { width: min(86vw, 660px); height: min(86vw, 660px); }
+}
+
+@media (max-width: 600px) {
+  #penaltyContainer {
+    top: 64px;
+    right: 10px;
+    gap: 8px;
+  }
+
+  .penalty-overlay {
+    width: min(270px, calc(100vw - 20px));
+  }
+
+  .penalty-burst {
+    min-height: 58px;
+    padding: 10px 14px 10px 12px;
+  }
+
+  .penalty-amount { font-size: 2rem; }
+  .penalty-label { font-size: 0.8rem; }
+}
+
+@media (max-width: 700px) {
+  .trade-card { max-height: 94vh; padding: 16px; }
+  .trade-toolbar { grid-template-columns: 1fr; }
+  .trade-columns { grid-template-columns: 1fr; max-height: 60vh; overflow-y: auto; }
+  .trade-asset-list { height: 145px; }
+  .trade-card .modal-buttons { flex-wrap: wrap; }
+}
+
+/* ===== DEBT RELIEF MODAL ===== */
+.debt-relief-card {
+  width: min(620px, 94vw);
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.debt-relief-summary {
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(201,168,76,0.3);
+  background: #182435;
+}
+
+.debt-relief-summary div:not(.debt-relief-track) {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.debt-relief-summary strong { color: #ff8f83; }
+.debt-relief-track {
+  grid-column: 1 / -1;
+  height: 8px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.08);
+}
+.debt-relief-track > div {
+  width: 0;
+  height: 100%;
+  background: var(--gold);
+  transition: width 0.2s ease;
+}
+.debt-relief-assets {
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.debt-relief-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px 2px;
+  border-bottom: 1px solid rgba(201,168,76,0.16);
+}
+.debt-relief-reason {
+  display: block;
+  color: rgba(232,213,183,0.55);
+  font-size: 0.68rem;
+}
+
+@media (max-width: 700px) {
+  .debt-relief-card { padding: 16px; max-height: 94vh; }
+  .debt-relief-summary { grid-template-columns: 1fr; }
+  .debt-relief-track { grid-column: 1; }
+  .debt-relief-row { grid-template-columns: 1fr; }
+  .debt-relief-row .btn-house { width: 100%; min-height: 40px; }
+}
+
+/* ===== MODE SELECTOR ===== */
+.mode-selector {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  justify-content: center;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 14px 20px;
+  border-radius: 12px;
+  border: 2px solid rgba(201,168,76,0.3);
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.85rem;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+.mode-btn:hover { border-color: var(--gold); background: rgba(201,168,76,0.08); }
+.mode-btn.selected {
+  border-color: var(--gold);
+  background: rgba(201,168,76,0.15);
+  box-shadow: 0 0 20px rgba(201,168,76,0.2);
+  color: var(--gold-light);
+}
+
+.mode-btn .mode-icon { display: block; font-size: 1.8rem; margin-bottom: 6px; }
+.mode-btn .mode-label { font-weight: 700; }
+
+/* ===== NAME INPUT ===== */
+.name-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  justify-content: center;
+}
+
+.name-input-color {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3);
+  flex-shrink: 0;
+}
+
+.name-input-field {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(201,168,76,0.3);
+  background: rgba(255,255,255,0.05);
+  color: var(--text-light);
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.85rem;
+  text-align: center;
+  width: 140px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.name-input-field:focus { border-color: var(--gold); }
+
+.name-input-label {
+  color: var(--text);
+  font-size: 0.75rem;
+  width: 50px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ===== PASS DEVICE OVERLAY ===== */
+.pass-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 400;
+  animation: fadeIn 0.3s;
+  cursor: pointer;
+}
+
+.pass-card {
+  background: linear-gradient(135deg, #1e2a3a 0%, #162030 100%);
+  border: 3px solid var(--gold);
+  border-radius: 20px;
+  padding: 40px 50px;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(201,168,76,0.2), 0 20px 60px rgba(0,0,0,0.5);
+  animation: slideUp 0.4s ease-out;
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.pass-card:hover { transform: scale(1.02); }
+
+.pass-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  animation: passPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes passPulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+.pass-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem;
+  color: var(--gold);
+  letter-spacing: 3px;
+  margin-bottom: 8px;
+}
+
+.pass-player-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-light);
+  margin-bottom: 4px;
+}
+
+.pass-player-color {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.pass-hint {
+  font-size: 0.8rem;
+  color: rgba(232,213,183,0.5);
+  margin-top: 16px;
+  letter-spacing: 2px;
+  animation: hintBlink 2s ease-in-out infinite;
+}
+
+@keyframes hintBlink {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* ===== TURN INDICATOR ===== */
+.turn-indicator {
+  display: none;
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: linear-gradient(135deg, #1e2a3a, #162030);
+  border: 2px solid var(--gold);
+  border-radius: 50px;
+  padding: 8px 24px;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.9rem;
+  color: var(--gold-light);
+  letter-spacing: 2px;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+@keyframes slideDown {
+  from { transform: translateX(-50%) translateY(-40px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ===== MOBILE PWA SHELL ===== */
+html {
+  min-height: 100%;
+  background: #0a0a15;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overscroll-behavior-y: contain;
+}
+
+.mobile-install-status {
+  position: fixed;
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  z-index: 180;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid rgba(201,168,76,0.35);
+  border-radius: 8px;
+  background: rgba(10,10,21,0.88);
+  color: var(--gold-light);
+  backdrop-filter: blur(12px);
+}
+
+.mobile-install-status button {
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  background: var(--gold);
+  color: #111827;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.mobile-action-dock {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  body {
+    display: block;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .game-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 8px calc(72px + env(safe-area-inset-bottom));
+  }
+
+  .board-container { order: 1; }
+  .side-panel { order: 2; }
+  .right-panel { order: 3; }
+
+  .board-outer {
+    width: 100%;
+    padding: 4px;
+    border-width: 2px;
+    border-radius: 8px;
+  }
+
+  .board-grid {
+    width: min(94vw, 620px);
+    height: min(94vw, 620px);
+    margin: 0 auto;
+    gap: 1px;
+  }
+
+  .center-area {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .center-area::before {
+    font-size: 1.8rem;
+    letter-spacing: 5px;
+  }
+
+  .game-logo {
+    font-size: 1.25rem;
+    letter-spacing: 4px;
+  }
+
+  .dice {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    padding: 5px;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .btn-roll,
+  .btn,
+  .btn-house,
+  .setup-player-btn,
+  .mode-btn {
+    min-height: 44px;
+  }
+
+  .btn-roll {
+    width: min(100%, 220px);
+    padding: 10px 18px;
+    font-size: 0.86rem;
+    letter-spacing: 1px;
+  }
+
+  .cell {
+    border-radius: 2px;
+  }
+
+  .cell:hover {
+    transform: none;
+  }
+
+  .cell .cell-name {
+    font-size: 0.42rem;
+    line-height: 1.05;
+  }
+
+  .cell .cell-price {
+    display: none;
+  }
+
+  .cell.corner .cell-name {
+    font-size: 0.48rem;
+  }
+
+  .side-panel,
+  .right-panel {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .panel-card {
+    width: 100%;
+    padding: 14px;
+    border-radius: 8px;
+  }
+
+  .player-info,
+  #propertyList,
+  #houseList,
+  .game-log-list {
+    max-height: 34dvh !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .game-log-list {
+    height: min(34dvh, 300px);
+  }
+
+  .modal-overlay {
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .modal-card {
+    width: min(94vw, 560px);
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    border-radius: 10px;
+  }
+
+  .mobile-install-status {
+    display: flex;
+  }
+}
+
+@media (max-width: 760px) and (orientation: landscape) {
+  .game-wrapper {
+    display: grid;
+    grid-template-columns: minmax(0, 58dvh) minmax(220px, 1fr);
+    grid-template-areas:
+      "board players"
+      "board panels";
+    align-items: start;
+  }
+
+  .board-container { grid-area: board; }
+  .side-panel { grid-area: players; }
+  .right-panel { grid-area: panels; }
+
+  .board-grid {
+    width: min(58dvh, 94vw);
+    height: min(58dvh, 94vw);
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  body {
+    display: block;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .game-wrapper {
+    display: grid;
+    grid-template-columns: minmax(0, 74dvh) minmax(260px, 1fr);
+    grid-template-areas:
+      "board players"
+      "board panels";
+    align-items: start;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px calc(56px + env(safe-area-inset-bottom));
+  }
+
+  .board-container { grid-area: board; }
+  .side-panel { grid-area: players; }
+  .right-panel { grid-area: panels; }
+
+  .board-outer {
+    width: 100%;
+    padding: 4px;
+    border-width: 2px;
+  }
+
+  .board-grid {
+    width: min(74dvh, 44vw);
+    height: min(74dvh, 44vw);
+    margin: 0 auto;
+    gap: 1px;
+  }
+
+  .side-panel,
+  .right-panel {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .panel-card {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .btn-roll,
+  .btn,
+  .btn-house,
+  .setup-player-btn,
+  .mode-btn {
+    min-height: 44px;
+  }
+
+  .btn-roll {
+    padding: 10px 18px;
+    font-size: 0.86rem;
+    letter-spacing: 1px;
+  }
+
+  .cell:hover {
+    transform: none;
+  }
+
+  .cell .cell-name {
+    font-size: 0.42rem;
+    line-height: 1.05;
+  }
+
+  .cell .cell-price {
+    display: none;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Setup Modal -->
+<div class="setup-overlay" id="setupOverlay">
+  <div class="setup-card">
+    <div class="setup-title">MONOPOLY</div>
+    <div class="setup-subtitle">大 富 翁 · 游 戏 设 置</div>
+    <!-- Mode Selector -->
+    <div class="mode-selector" id="modeSelector">
+      <button class="mode-btn selected" data-mode="ai">
+        <span class="mode-icon">🤖</span>
+        <span class="mode-label">与电脑对战</span>
+      </button>
+      <button class="mode-btn" data-mode="human">
+        <span class="mode-icon">👥</span>
+        <span class="mode-label">与真人对战</span>
+      </button>
+    </div>
+    <!-- Player Count -->
+    <div style="font-size:0.8rem;color:var(--text);margin-bottom:12px;" id="playerCountLabel">选择玩家数量</div>
+    <div class="setup-players" id="setupPlayers">
+      <button class="setup-player-btn" data-count="1">1</button>
+      <button class="setup-player-btn selected" data-count="2">2</button>
+      <button class="setup-player-btn" data-count="3">3</button>
+      <button class="setup-player-btn" data-count="4">4</button>
+    </div>
+    <!-- Name Inputs (visible in human mode) -->
+    <div id="nameInputs" style="display:none; margin-top: 16px;"></div>
+    <!-- AI Trade Setting (visible in AI mode) -->
+    <label class="setup-check" id="aiTradeSetting">
+      <input type="checkbox" id="allowAITradeCheck">
+      <span>允许 AI 主动向我报价</span>
+    </label>
+    <!-- Description -->
+    <div class="setup-description" id="setupDescription">
+      <strong>2人模式</strong>：1名人类玩家 + 1个AI对手<br>
+      经典对战，快速体验大富翁乐趣
+    </div>
+    <button class="btn-start" id="btnStartGame">开 始 游 戏</button>
+  </div>
+</div>
+
+<div class="mobile-install-status" id="mobileInstallStatus" aria-live="polite">
+  <span>单机离线版</span>
+  <button type="button" id="mobileInstallBtn" hidden>安装</button>
+</div>
+
+<div class="game-wrapper">
+  <div class="side-panel">
+    <div class="panel-card">
+      <div class="panel-title">玩 家</div>
+      <div class="player-info" id="playerInfo"></div>
+    </div>
+    <div class="panel-card" id="housePanel" style="display:none;">
+      <div class="panel-title">🏠 房屋升级</div>
+      <div id="houseList" style="font-size:0.7rem;color:var(--text);max-height:250px;overflow-y:auto;"></div>
+    </div>
+    <div class="panel-card">
+      <div class="panel-title">规 则</div>
+      <div style="font-size:0.65rem;color:rgba(232,213,183,0.6);line-height:1.6;">
+        起点经过得$1000 · 完整同色组且无抵押才可开发 · 每回合掷骰前可交易一次 · 交易最多还价2轮 · 玩家破产后退出，最后存活者获胜
+      </div>
+    </div>
+  </div>
+
+  <div class="board-container">
+    <div class="board-outer">
+      <div class="board-grid" id="boardGrid"></div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-card" id="propertyPanel" style="display:none;">
+      <div class="panel-title">地 产</div>
+      <div id="propertyList" style="font-size:0.7rem;color:var(--text);max-height:420px;overflow-y:auto;"></div>
+    </div>
+    <div class="panel-card log-panel" id="gameLogPanel">
+      <div class="panel-title">角色日志</div>
+      <div class="game-log-list" id="gameLogList" tabindex="0" aria-live="polite">
+        <div class="game-log-empty">重大经历会按时间记录在这里</div>
+      </div>
+      <button class="game-log-new" id="btnNewGameLogs" type="button">有新日志 · 查看最新</button>
+    </div>
+  </div>
+</div>
+
+<!-- Buy Modal -->
+<div class="modal-overlay hidden" id="buyModal">
+  <div class="modal-card">
+    <div class="modal-title" id="buyModalTitle">购买地产</div>
+    <div class="modal-body" id="buyModalBody"></div>
+    <div class="modal-buttons">
+      <button class="btn btn-primary" id="btnBuy">购 买</button>
+      <button class="btn btn-secondary" id="btnSkip">跳 过</button>
+    </div>
+  </div>
+</div>
+
+<!-- Card Modal -->
+<div class="modal-overlay hidden" id="cardModal">
+  <div class="modal-card">
+    <div class="modal-title" id="cardModalTitle"></div>
+    <div class="modal-body" id="cardModalBody"></div>
+    <div class="modal-buttons">
+      <button class="btn btn-primary" id="btnCardOk">确 定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Auction -->
+<div class="modal-overlay hidden" id="auctionModal">
+  <div class="modal-card">
+    <div class="modal-title" id="auctionTitle">拍卖</div>
+    <div class="modal-body" id="auctionBody"></div>
+    <div class="modal-buttons">
+      <button class="btn btn-primary" id="btnAuctionBid">出 价</button>
+      <button class="btn btn-secondary" id="btnAuctionPass">跳 过</button>
+    </div>
+  </div>
+</div>
+
+<!-- Jail Decision -->
+<div class="modal-overlay hidden" id="jailDecisionModal">
+  <div class="modal-card">
+    <div class="modal-title" id="jailDecisionTitle">入 狱</div>
+    <div class="modal-body" id="jailDecisionBody"></div>
+    <div class="modal-buttons">
+      <button class="btn btn-primary" id="btnJailRelease">立即出狱</button>
+      <button class="btn btn-secondary" id="btnJailStay">暂不出狱</button>
+    </div>
+  </div>
+</div>
+
+<!-- Human Debt Relief -->
+<div class="modal-overlay hidden" id="debtReliefModal">
+  <div class="modal-card debt-relief-card" role="dialog" aria-modal="true"
+       aria-labelledby="debtReliefTitle">
+    <div class="modal-title" id="debtReliefTitle">债务处置中心</div>
+    <div class="debt-relief-summary">
+      <div><span>当前现金</span><strong id="debtReliefCash">$0</strong></div>
+      <div><span>仍需筹集</span><strong id="debtReliefNeeded">$0</strong></div>
+      <div class="debt-relief-track" aria-hidden="true">
+        <div id="debtReliefProgress"></div>
+      </div>
+    </div>
+    <div class="debt-relief-assets" id="debtReliefAssets"></div>
+    <div class="trade-error" id="debtReliefStatus" aria-live="polite"></div>
+  </div>
+</div>
+
+<!-- Property Trade -->
+<div class="modal-overlay hidden" id="tradeModal">
+  <div class="modal-card trade-card">
+    <div class="modal-title" id="tradeModalTitle">地产交易</div>
+    <div class="trade-toolbar">
+      <label for="tradeTarget">交易对象</label>
+      <select id="tradeTarget" onchange="changeTradeTarget()"></select>
+      <span id="tradeCounterStatus">还价 0/2</span>
+    </div>
+    <div class="trade-columns">
+      <section class="trade-side">
+        <h3 id="tradeOfferTitle">你提供</h3>
+        <div class="trade-asset-list" id="tradeOfferList"></div>
+        <label class="trade-input-row">现金
+          <input class="trade-money" id="tradeOfferCash" type="number" min="0" step="50" inputmode="numeric" value="0">
+        </label>
+        <label class="trade-check"><input id="tradeOfferCard" type="checkbox"> 出狱免费卡</label>
+      </section>
+      <section class="trade-side">
+        <h3 id="tradeRequestTitle">希望获得</h3>
+        <div class="trade-asset-list" id="tradeRequestList"></div>
+        <label class="trade-input-row">现金
+          <input class="trade-money" id="tradeRequestCash" type="number" min="0" step="50" inputmode="numeric" value="0">
+        </label>
+        <label class="trade-check"><input id="tradeRequestCard" type="checkbox"> 出狱免费卡</label>
+      </section>
+    </div>
+    <div class="trade-summary" id="tradeSummary"></div>
+    <div class="trade-error" id="tradeError" aria-live="polite"></div>
+    <div class="modal-buttons" id="tradeComposeButtons">
+      <button class="btn btn-primary" id="btnTradeSubmit" onclick="submitTradeComposer()">提交报价</button>
+      <button class="btn btn-secondary" id="btnTradeCancel" onclick="cancelTrade()">取消</button>
+    </div>
+    <div class="modal-buttons" id="tradeReviewButtons" style="display:none;">
+      <button class="btn btn-primary" id="btnTradeAccept" onclick="acceptTrade()">接受</button>
+      <button class="btn btn-secondary" id="btnTradeCounter" onclick="prepareCounterTrade()">还价</button>
+      <button class="btn btn-secondary" id="btnTradeReject" onclick="rejectTrade()">拒绝</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game Over -->
+<div id="gameOverOverlay" class="game-over-overlay" style="display:none;">
+  <div class="game-over-card">
+    <div class="game-over-title" id="gameOverTitle"></div>
+    <div class="game-over-winner" id="gameOverWinner"></div>
+    <button class="btn btn-primary" onclick="location.reload()">再来一局</button>
+  </div>
+</div>
+
+<!-- Pass Device Overlay (for human vs human mode) -->
+<div id="passOverlay" class="pass-overlay" style="display:none;" onclick="confirmPassDevice()">
+  <div class="pass-card">
+    <div class="pass-icon">↗️</div>
+    <div class="pass-title">PASS THE DEVICE</div>
+    <div style="margin-bottom: 16px;">
+      <span class="pass-player-color" id="passPlayerColor" style="display:inline-block;width:20px;height:20px;border-radius:50%;vertical-align:middle;"></span>
+      <span class="pass-player-name" id="passPlayerName"></span>
+    </div>
+    <div>轮到你了！</div>
+    <div class="pass-hint">点击屏幕开始你的回合</div>
+  </div>
+</div>
+
+<!-- Turn Indicator -->
+<div class="turn-indicator" id="turnIndicator">
+  <span id="turnIndicatorText"></span>
+</div>
+
+<div id="notificationContainer"></div>
+<div id="diceResultOverlay" class="dice-result-overlay" style="display:none;"></div>
+<div id="penaltyContainer"></div>
+
+<script>
+// ==================== GAME DATA ====================
+const BOARD_SIZE = 40;
+
+const COLOR_GROUPS = {
+  brown: [1, 3],
+  lightBlue: [5, 6],
+  pink: [8, 9],
+  orange: [11, 13, 14],
+  red: [16, 17, 19],
+  yellow: [21, 23, 24],
+  green: [26, 27, 29],
+  darkBlue: [31, 32],
+  gold: [34, 36],
+};
+
+const GROUP_COLORS = {
+  brown: '#8b4513', lightBlue: '#87ceeb', pink: '#e84393', orange: '#e67e22',
+  red: '#e74c3c', yellow: '#f1c40f', green: '#27ae60', darkBlue: '#1a237e',
+  gold: '#c9a84c',
+};
+
+// 建房费: 低级区500, 中级区1000, 高级区2000（规则文档第115-118行）
+const HOUSE_COST = {
+  brown: 500, lightBlue: 500, pink: 500,
+  orange: 1000, red: 1000,
+  yellow: 2000, green: 2000, darkBlue: 2000, gold: 2000,
+};
+
+// 租金倍率: 0=空地1x, 1=房屋3x, 2=公寓6x, 3=酒店12x, 4=地标20x（规则文档第94-99行）
+const RENT_MULTIPLIER = [1, 3, 6, 12, 20];
+
+// 建筑等级名称（规则文档第84-89行）
+const HOUSE_LEVEL_NAMES = ['空地', '房屋', '公寓', '酒店', '地标'];
+
+// SPACES: baseRent = 地价 × 10%（规则文档第79行）
+const SPACES = [
+  { type: 'go',          name: '起 点',       group: null,       price: null, baseRent: null,  icon: '→' },
+  { type: 'property',    name: '郊区小径',      group: 'brown',    price: 600,  baseRent: 60 },
+  { type: 'destiny',     name: '命 运',        group: null,       price: null, baseRent: null,  icon: '◆' },
+  { type: 'property',    name: '田园路',        group: 'brown',    price: 600,  baseRent: 60 },
+  { type: 'tax',         name: '所得税',       group: null,       price: null, baseRent: null,  icon: '💰' },
+  { type: 'property',    name: '山谷道',        group: 'lightBlue',price: 600,  baseRent: 60 },
+  { type: 'property',    name: '林间路',        group: 'lightBlue',price: 600,  baseRent: 60 },
+  { type: 'chance',      name: '机 会',        group: null,       price: null, baseRent: null,  icon: '?' },
+  { type: 'property',    name: '湖畔道',        group: 'pink',     price: 600,  baseRent: 60 },
+  { type: 'property',    name: '春风路',        group: 'pink',     price: 600,  baseRent: 60 },
+  { type: 'jail',        name: '监狱/探视',     group: null,       price: null, baseRent: null,  icon: '⚖' },
+  { type: 'property',    name: '商业一街',      group: 'orange',   price: 1200, baseRent: 120 },
+  { type: 'destiny',     name: '命 运',        group: null,       price: null, baseRent: null,  icon: '◆' },
+  { type: 'property',    name: '商业二街',      group: 'orange',   price: 1200, baseRent: 120 },
+  { type: 'property',    name: '商业三街',      group: 'orange',   price: 1200, baseRent: 120 },
+  { type: 'chance',      name: '机 会',        group: null,       price: null, baseRent: null,  icon: '?' },
+  { type: 'property',    name: '锦绣路',        group: 'red',      price: 1200, baseRent: 120 },
+  { type: 'property',    name: '明珠大道',      group: 'red',      price: 1200, baseRent: 120 },
+  { type: 'destiny',     name: '命 运',        group: null,       price: null, baseRent: null,  icon: '◆' },
+  { type: 'property',    name: '星光道',        group: 'red',      price: 1200, baseRent: 120 },
+  { type: 'freeParking', name: '免费停车',      group: null,       price: null, baseRent: null,  icon: 'P' },
+  { type: 'property',    name: '中央一街',      group: 'yellow',   price: 2500, baseRent: 250 },
+  { type: 'chance',      name: '机 会',        group: null,       price: null, baseRent: null,  icon: '?' },
+  { type: 'property',    name: '中央二街',      group: 'yellow',   price: 2500, baseRent: 250 },
+  { type: 'property',    name: '中央广场',      group: 'yellow',   price: 2500, baseRent: 250 },
+  { type: 'destiny',     name: '命 运',        group: null,       price: null, baseRent: null,  icon: '◆' },
+  { type: 'property',    name: '金融大道',      group: 'green',    price: 2500, baseRent: 250 },
+  { type: 'property',    name: '世纪路',        group: 'green',    price: 2500, baseRent: 250 },
+  { type: 'chance',      name: '机 会',        group: null,       price: null, baseRent: null,  icon: '?' },
+  { type: 'property',    name: '国际中心',      group: 'green',    price: 2500, baseRent: 250 },
+  { type: 'goToJail',    name: '前往监狱',      group: null,       price: null, baseRent: null,  icon: '🔒' },
+  { type: 'property',    name: '黄金海岸',      group: 'darkBlue', price: 4000, baseRent: 400 },
+  { type: 'property',    name: '钻石路',        group: 'darkBlue', price: 4000, baseRent: 400 },
+  { type: 'destiny',     name: '命 运',        group: null,       price: null, baseRent: null,  icon: '◆' },
+  { type: 'property',    name: '帝王台',        group: 'gold',     price: 4000, baseRent: 400 },
+  { type: 'chance',      name: '机 会',        group: null,       price: null, baseRent: null,  icon: '?' },
+  { type: 'property',    name: '至尊道',        group: 'gold',     price: 4000, baseRent: 400 },
+  { type: 'destiny',     name: '命 运',        group: null,       price: null, baseRent: null,  icon: '◆' },
+  { type: 'tax',         name: '豪宅税',       group: null,       price: null, baseRent: null,  icon: '💎' },
+  { type: 'destiny',     name: '命 运',        group: null,       price: null, baseRent: null,  icon: '◆' },
+];
+
+const CHANCE_CARDS = [
+  { text: '银行发放红利！获得 $500', action: (p) => { p.money += 500; return '获得 $500！'; } },
+  { text: '中奖了！获得 $1000', action: (p) => { p.money += 1000; return '获得 $1000！'; } },
+  { text: '出狱免费卡！如果入狱可立即出狱', action: (p) => { p.hasGetOutOfJailCard = true; return '获得出狱免费卡！'; } },
+  { text: '汽车维修费 $300', action: (p) => { p.money -= 300; return '支付 $300 维修费。'; } },
+  { text: '医疗支出 $500', action: (p) => { p.money -= 500; return '支付 $500 医疗费。'; } },
+  { text: '后退 3 步', action: (p) => { p.position = (p.position - 3 + BOARD_SIZE) % BOARD_SIZE; return '后退 3 步。'; } },
+  { text: '前进到起点，获得 $1000', action: (p) => { p.position = 0; p.money += 1000; return '前进到起点，获得 $1000！'; } },
+  { text: '生日快乐！每位玩家给你 $100', action: (p) => {
+    let total = 0;
+    players.forEach(op => { if (op !== p) { op.money -= 100; total += 100; } });
+    p.money += total; return `获得 $${total}！`;
+  }},
+  { text: '房屋维修费 $400', action: (p) => { p.money -= 400; return '支付 $400 维修费。'; } },
+  { text: '前进到免费停车', action: (p) => { p.position = 20; return '前进到免费停车。'; } },
+  { text: '前往监狱', action: (p) => { p.position = 10; p.inJail = true; p.jailTurns = 0; return '直接进监狱！'; } },
+  { text: '捡到钱！获得 $300', action: (p) => { p.money += 300; return '获得 $300！'; } },
+];
+
+const DESTINY_CARDS = [
+  { text: '继承遗产！获得 $3000', action: (p) => { p.money += 3000; return '获得 $3000！'; } },
+  { text: '投资失败，失去 $3000', action: (p) => { p.money -= 3000; return '失去 $3000。'; } },
+  { text: '前往监狱', action: (p) => { p.position = 10; p.inJail = true; p.jailTurns = 0; return '被送进监狱！'; } },
+  { text: '任意传送！', action: (p) => {
+    const newPos = Math.floor(Math.random() * BOARD_SIZE);
+    p.position = newPos;
+    return `传送到 ${SPACES[newPos].name}！`;
+  }},
+  { text: '获得 $2000 奖金', action: (p) => { p.money += 2000; return '获得 $2000！'; } },
+  { text: '缴纳罚款 $1500', action: (p) => { p.money -= 1500; return '支付 $1500 罚款。'; } },
+  { text: '前进到起点，获得 $1000', action: (p) => { p.position = 0; p.money += 1000; return '前进到起点，获得 $1000！'; } },
+  { text: '出狱免费卡！', action: (p) => { p.hasGetOutOfJailCard = true; return '获得出狱免费卡！'; } },
+  { text: '股市崩盘，失去 $2000', action: (p) => { p.money -= 2000; return '失去 $2000。'; } },
+  { text: '中大奖！获得 $2500', action: (p) => { p.money += 2500; return '获得 $2500！'; } },
+  { text: '后退 2 步', action: (p) => { p.position = (p.position - 2 + BOARD_SIZE) % BOARD_SIZE; return '后退 2 步。'; } },
+  { text: '银行错误赔付 $1500', action: (p) => { p.money += 1500; return '获得 $1500！'; } },
+];
+
+// ==================== GAME STATE ====================
+let players = [];
+let currentPlayerIndex = 0;
+let gameOver = false;
+let freeParkingMoney = 0;
+let humanPlayerCount = 2;
+let totalPlayers = 2;
+let gameMode = 'ai'; // 'ai' or 'human'
+let allowAIInitiatedHumanTrades = false; // AI 模式开局设置：允许 AI 主动向真人报价
+let houseOwnership = {}; // { pos: houses }
+let mortgageStatus = {}; // { pos: true } = 已抵押（规则文档第137-143行）
+let lastDiceRoll = [1, 1]; // [d1, d2]
+let teleportMode = false; // 传送选择模式
+let teleportData = null; // { player, isDouble, d1, d2 }
+let tradeState = null;
+let tradeWindow = { playerId: null, available: false, locked: false };
+let debtReliefState = null;
+let nextTradeId = 1;
+let stalemateState = {
+  inactiveRounds: 0,
+  activityThisRound: false,
+  turnsSeen: new Set(),
+  tier: 0,
+};
+let gameLogs = [];
+let nextGameLogId = 1;
+let logAutoFollow = true;
+let logProgrammaticScroll = false;
+const MAX_GAME_LOGS = 200;
+
+const PLAYER_COLORS = ['#e74c3c', '#2980b9', '#27ae60', '#f1c40f'];
+const PLAYER_TOKEN_LABELS = ['你', 'CPU', 'CPU', 'CPU'];
+
+function isPlayerActive(player) {
+  return Boolean(player) && !player.bankrupt;
+}
+
+function createTradeBundle() {
+  return { propertyIds: [], cash: 0, jailCard: false };
+}
+
+function normalizeTradeBundle(bundle) {
+  bundle = bundle || {};
+  const propertyIds = Array.isArray(bundle.propertyIds) ? bundle.propertyIds : [];
+  return {
+    propertyIds: [...new Set(propertyIds.map(Number))],
+    cash: Math.max(0, Math.floor(Number(bundle.cash) || 0)),
+    jailCard: Boolean(bundle.jailCard),
+  };
+}
+
+function openTradeWindowForPlayer(player) {
+  tradeWindow = { playerId: player.id, available: true, locked: false };
+}
+
+function consumeTradeWindow() {
+  tradeWindow.available = false;
+  tradeWindow.locked = false;
+}
+
+function canCurrentPlayerRoll() {
+  const player = players[currentPlayerIndex];
+  return !gameOver && isPlayerActive(player) && player.isHuman
+    && !tradeWindow.locked && !tradeState && !debtReliefState;
+}
+
+function formatLogTime(date) {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function createGameLogEntry({ id, timestamp, type, actor, message }) {
+  return {
+    id,
+    timestamp: typeof timestamp === 'string' ? timestamp : formatLogTime(timestamp),
+    type,
+    actor: actor || '',
+    message,
+  };
+}
+
+function appendCappedGameLog(entries, entry, limit = MAX_GAME_LOGS) {
+  return [...entries, entry].slice(-limit);
+}
+
+const LOG_TYPE_META = {
+  gain: { icon: '▲', label: '收益' },
+  loss: { icon: '▼', label: '支出' },
+  property: { icon: '■', label: '地产' },
+  auction: { icon: '◆', label: '拍卖' },
+  card: { icon: '✦', label: '卡牌' },
+  jail: { icon: '▣', label: '监狱' },
+  building: { icon: '⌂', label: '建筑' },
+  system: { icon: '•', label: '系统' },
+};
+
+function isGameLogNearBottom(container) {
+  return container.scrollHeight - container.scrollTop - container.clientHeight <= 32;
+}
+
+function scrollGameLogToBottom(behavior = 'smooth') {
+  const list = document.getElementById('gameLogList');
+  if (!list) return;
+  logAutoFollow = true;
+  logProgrammaticScroll = true;
+  const previousBehavior = list.style.scrollBehavior;
+  list.style.scrollBehavior = behavior === 'smooth' ? 'smooth' : 'auto';
+  list.scrollTop = list.scrollHeight;
+  requestAnimationFrame(() => {
+    list.style.scrollBehavior = previousBehavior;
+    logProgrammaticScroll = false;
+  });
+  document.getElementById('btnNewGameLogs')?.classList.remove('visible');
+}
+
+function renderGameLogs({ forceBottom = false } = {}) {
+  const list = document.getElementById('gameLogList');
+  const newButton = document.getElementById('btnNewGameLogs');
+  if (!list || !newButton) return;
+
+  const shouldFollow = forceBottom || logAutoFollow || isGameLogNearBottom(list);
+  const previousScrollTop = list.scrollTop;
+  if (gameLogs.length === 0) {
+    list.innerHTML = '<div class="game-log-empty">重大经历会按时间记录在这里</div>';
+  } else {
+    list.innerHTML = gameLogs.map(entry => {
+      const meta = LOG_TYPE_META[entry.type] || LOG_TYPE_META.system;
+      return `<article class="game-log-entry type-${entry.type}" data-log-id="${entry.id}" title="${meta.label}">
+        <time class="game-log-time">${escapeHTML(entry.timestamp)}</time>
+        <span class="game-log-icon" aria-hidden="true">${meta.icon}</span>
+        <div class="game-log-copy">
+          ${entry.actor ? `<span class="game-log-actor">${escapeHTML(entry.actor)}</span>` : ''}
+          ${escapeHTML(entry.message)}
+        </div>
+      </article>`;
+    }).join('');
+  }
+
+  if (shouldFollow) {
+    requestAnimationFrame(() => scrollGameLogToBottom(forceBottom ? 'auto' : 'smooth'));
+  } else {
+    list.scrollTop = previousScrollTop;
+    newButton.classList.add('visible');
+  }
+}
+
+function addGameLog(type, actor, message, timestamp = new Date()) {
+  const entry = createGameLogEntry({
+    id: nextGameLogId++,
+    timestamp,
+    type: LOG_TYPE_META[type] ? type : 'system',
+    actor,
+    message,
+  });
+  gameLogs = appendCappedGameLog(gameLogs, entry, MAX_GAME_LOGS);
+  renderGameLogs();
+  return entry;
+}
+
+function initGameLogInteractions() {
+  const list = document.getElementById('gameLogList');
+  const newButton = document.getElementById('btnNewGameLogs');
+  if (!list || !newButton || list.dataset.ready === 'true') return;
+  list.dataset.ready = 'true';
+  list.addEventListener('scroll', () => {
+    if (logProgrammaticScroll) return;
+    logAutoFollow = isGameLogNearBottom(list);
+    if (logAutoFollow) newButton.classList.remove('visible');
+  }, { passive: true });
+  newButton.addEventListener('click', () => scrollGameLogToBottom('auto'));
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+function sanitizePlayerName(value, fallback) {
+  const cleaned = String(value || '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[<>&"']/g, '')
+    .trim()
+    .slice(0, 6);
+  return cleaned || fallback;
+}
+
+function checkAllBankruptcies(creditor = null, resume = null) {
+  for (const player of [...players]) {
+    if (gameOver) return true;
+    if (player.money < 0 && checkBankruptcy(player, creditor, resume)) return true;
+  }
+  return false;
+}
+
+// ==================== SETUP ====================
+let selectedCount = 2;
+
+// Mode selector
+document.getElementById('modeSelector').addEventListener('click', (e) => {
+  const btn = e.target.closest('.mode-btn');
+  if (!btn) return;
+  gameMode = btn.dataset.mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+
+  if (gameMode === 'ai') {
+    document.getElementById('playerCountLabel').textContent = '选择玩家数量';
+    document.getElementById('nameInputs').style.display = 'none';
+    document.getElementById('aiTradeSetting').style.display = '';
+    // Show all 1-4 buttons
+    document.querySelectorAll('.setup-player-btn').forEach(b => b.style.display = '');
+    if (selectedCount === 1) selectedCount = 2;
+    document.querySelectorAll('.setup-player-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector('.setup-player-btn[data-count="2"]').classList.add('selected');
+    updateSetupDescription();
+  } else {
+    document.getElementById('playerCountLabel').textContent = '选择玩家数量（真人）';
+    document.getElementById('aiTradeSetting').style.display = 'none';
+    // Hide 1-player button (need at least 2 for human vs human)
+    document.querySelector('.setup-player-btn[data-count="1"]').style.display = 'none';
+    if (selectedCount === 1) selectedCount = 2;
+    document.querySelectorAll('.setup-player-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelector('.setup-player-btn[data-count="2"]').classList.add('selected');
+    updateSetupDescription();
+    updateNameInputs();
+  }
+});
+
+// Player count selector
+document.getElementById('setupPlayers').addEventListener('click', (e) => {
+  const btn = e.target.closest('.setup-player-btn');
+  if (!btn) return;
+  selectedCount = parseInt(btn.dataset.count);
+  document.querySelectorAll('.setup-player-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  updateSetupDescription();
+  if (gameMode === 'human') updateNameInputs();
+});
+
+function updateSetupDescription() {
+  const isAI = gameMode === 'ai';
+  const descriptions = {
+    1: { ai: '<strong>单人模式</strong>：1名人类玩家<br>与AI对战，练习策略', human: '' },
+    2: { ai: '<strong>2人模式</strong>：1名人类玩家 + 1个AI对手<br>经典对战，快速体验大富翁乐趣', human: '<strong>2人对战</strong>：2名真人玩家<br>轮流操作，本地热座对战' },
+    3: { ai: '<strong>3人模式</strong>：1名人类玩家 + 2个AI对手<br>多人混战，竞争更激烈', human: '<strong>3人对战</strong>：3名真人玩家<br>轮流操作，三分天下' },
+    4: { ai: '<strong>4人模式</strong>：1名人类玩家 + 3个AI对手<br>终极挑战，谁是地产之王？', human: '<strong>4人对战</strong>：4名真人玩家<br>终极混战，群雄逐鹿' },
+  };
+  const desc = descriptions[selectedCount];
+  document.getElementById('setupDescription').innerHTML = isAI ? desc.ai : desc.human;
+}
+
+function updateNameInputs() {
+  const container = document.getElementById('nameInputs');
+  container.style.display = 'block';
+  const defaultNames = ['玩家一', '玩家二', '玩家三', '玩家四'];
+  let html = '';
+  for (let i = 0; i < selectedCount; i++) {
+    html += `<div class="name-input-group">
+      <span class="name-input-label">玩家${i + 1}</span>
+      <span class="name-input-color" style="background:${PLAYER_COLORS[i]};"></span>
+      <input class="name-input-field" id="playerName${i}" value="${defaultNames[i]}" maxlength="6" placeholder="输入名字">
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+document.getElementById('btnStartGame').addEventListener('click', () => {
+  if (gameMode === 'ai') {
+    humanPlayerCount = 1;
+    totalPlayers = selectedCount;
+  } else {
+    humanPlayerCount = selectedCount;
+    totalPlayers = selectedCount;
+  }
+  document.getElementById('setupOverlay').style.display = 'none';
+  initGame();
+});
+
+function initGame() {
+  houseOwnership = {};
+  mortgageStatus = {};
+  teleportMode = false; teleportData = null;
+  gameLogs = [];
+  nextGameLogId = 1;
+  logAutoFollow = true;
+  tradeState = null;
+  tradeWindow = { playerId: null, available: false, locked: false };
+  debtReliefState = null;
+  nextTradeId = 1;
+  allowAIInitiatedHumanTrades = document.getElementById('allowAITradeCheck')?.checked || false;
+  stalemateState = { inactiveRounds: 0, activityThisRound: false, turnsSeen: new Set(), tier: 0 };
+  players = [];
+  const isHumanMode = gameMode === 'human';
+
+  for (let i = 0; i < totalPlayers; i++) {
+    let name;
+    if (isHumanMode) {
+      const input = document.getElementById('playerName' + i);
+      name = sanitizePlayerName(input ? input.value : '', `玩家${i + 1}`);
+    } else {
+      name = i === 0 ? '你' : `电脑${i}`;
+    }
+
+    players.push({
+      id: i,
+      name: name,
+      isHuman: isHumanMode ? true : (i === 0),
+      money: 15000,
+      position: 0,
+      properties: [],
+      inJail: false,
+      jailTurns: 0,
+      hasGetOutOfJailCard: false,
+      consecutiveDoubles: 0,
+      bankrupt: false,
+      auctionProfile: {
+        bids: 0,
+        passes: 0,
+        bidRatioEMA: 0.5,
+      },
+      color: PLAYER_COLORS[i],
+    });
+  }
+  currentPlayerIndex = 0;
+  gameOver = false;
+  freeParkingMoney = 0;
+  document.getElementById('gameOverOverlay').style.display = 'none';
+  document.getElementById('passOverlay').style.display = 'none';
+  document.getElementById('turnIndicator').style.display = 'none';
+  initGameLogInteractions();
+  renderGameLogs({ forceBottom: true });
+  addGameLog('system', '', `游戏开始，共 ${totalPlayers} 名角色`);
+  openTradeWindowForPlayer(players[0]);
+  updateUI();
+  setStatus('可先交易，或点击掷骰子开始游戏。');
+}
+
+// ==================== BOARD RENDERING ====================
+function renderBoard() {
+  const grid = document.getElementById('boardGrid');
+  grid.innerHTML = '';
+
+  const cellMap = {};
+  for (let c = 0; c <= 10; c++) { cellMap[`10,${10-c}`] = c; }
+  for (let r = 0; r <= 9; r++) { cellMap[`${9-r},0`] = 10 + r + 1; }
+  for (let c = 1; c <= 10; c++) { cellMap[`0,${c}`] = 20 + c; }
+  for (let r = 1; r <= 9; r++) { cellMap[`${r},10`] = 30 + r; }
+
+  for (let row = 0; row < 11; row++) {
+    for (let col = 0; col < 11; col++) {
+      const cell = document.createElement('div');
+
+      if (row >= 1 && row <= 9 && col >= 1 && col <= 9) {
+        if (row === 1 && col === 1) {
+          cell.classList.add('center-area');
+          cell.style.gridColumn = '2 / 11';
+          cell.style.gridRow = '2 / 11';
+          cell.innerHTML = `
+            <div class="game-logo">
+              大富翁
+              <span class="sub">MONOPOLY</span>
+            </div>
+            <div class="center-dice-area">
+              <div class="dice-container">
+                <div class="dice" id="dice1"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="dice" id="dice2"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+              </div>
+              <button class="btn-roll" id="btnRoll" onclick="rollDice()">🎲 掷骰子</button>
+              <button class="btn-roll btn-trade" id="btnTrade" type="button" onclick="openTradeComposer()">交易</button>
+              <button class="btn-roll" id="btnBail" onclick="payBail()" style="display:none;background:linear-gradient(135deg,#e74c3c,#c0392b);margin-top:8px;">💰 付$500保释</button>
+              <div class="game-status" id="gameStatus">点击掷骰子开始游戏！</div>
+            </div>
+          `;
+          grid.appendChild(cell);
+          continue;
+        } else if (row >= 2 || col >= 2) { continue; }
+      }
+
+      const key = `${row},${col}`;
+      const pos = cellMap[key];
+      if (pos === undefined) continue;
+
+      const space = SPACES[pos];
+      cell.classList.add('cell');
+      cell.dataset.position = pos;
+
+      const owner = getOwner(pos);
+      if (owner !== null) { cell.classList.add('owned'); }
+
+      let bgStyle = '';
+      if (space.type === 'property' && space.group && GROUP_COLORS[space.group]) {
+        bgStyle = `background:${GROUP_COLORS[space.group]};`;
+      }
+
+      switch (space.type) {
+        case 'property': cell.classList.add('property'); break;
+        case 'chance': cell.classList.add('chance'); break;
+        case 'destiny': cell.classList.add('destiny'); break;
+        case 'tax': cell.classList.add('tax'); break;
+        case 'railroad': cell.classList.add('railroad'); break;
+        case 'utility': cell.classList.add('utility'); break;
+        default: cell.classList.add('corner'); break;
+      }
+
+      let tokensHTML = '';
+      players.forEach(p => {
+        if (p.position === pos) {
+          tokensHTML += `<div class="mini-token" style="background:${p.color};"></div>`;
+        }
+      });
+
+      let priceHTML = '';
+      if (space.price) {
+        priceHTML = `<div class="cell-price">$${space.price}</div>`;
+      } else if (space.taxAmount) {
+        priceHTML = `<div class="cell-price">付$${space.taxAmount}</div>`;
+      }
+
+      // House icons
+      let housesHTML = '';
+      const houses = houseOwnership[pos] || 0;
+      if (houses > 0 && houses < 5) {
+        housesHTML = `<div class="houses-row">${'<div class="house-icon"></div>'.repeat(houses)}</div>`;
+      } else if (houses === 4) {
+        housesHTML = `<div class="houses-row"><div class="hotel-icon"></div></div>`;
+      }
+
+      let ownerHTML = '';
+      if (owner !== null) {
+        ownerHTML = `<div class="property-card-dot" style="background:${owner.color};position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;"></div>`;
+      }
+
+      cell.innerHTML = `
+        ${tokensHTML ? `<div class="tokens-on-cell">${tokensHTML}</div>` : ''}
+        ${ownerHTML}
+        ${housesHTML}
+        <div class="cell-name">${space.icon ? space.icon + ' ' : ''}${space.name}</div>
+        ${priceHTML}
+        <div class="color-bar" style="${bgStyle}"></div>
+      `;
+
+      cell.title = getCellTooltip(pos);
+
+      players.forEach(p => {
+        if (p.position === pos) {
+          cell.classList.add(p.id === currentPlayerIndex ? 'current-pos' : 'current-pos-ai');
+        }
+      });
+
+      // 传送模式：所有格子可点击
+      if (teleportMode) {
+        cell.classList.add('teleport-target');
+        cell.style.cursor = 'pointer';
+        cell.onclick = () => handleTeleportClick(pos);
+      }
+
+      grid.appendChild(cell);
+    }
+  }
+
+  const btn = document.getElementById('btnRoll');
+  if (btn) btn.onclick = rollDice;
+}
+
+function getCellTooltip(pos) {
+  const space = SPACES[pos];
+  const owner = getOwner(pos);
+  const houses = houseOwnership[pos] || 0;
+  let tip = space.name;
+  if (space.price) tip += ` - 价格: $${space.price}`;
+  if (owner) tip += ` | 拥有者: ${owner.name}`;
+  if (houses > 0) tip += ` | 房屋: ${houses}级`;
+  if (space.type === 'tax' && space.taxAmount) tip += ` - 缴税 $${space.taxAmount}`;
+  return tip;
+}
+
+function getOwner(pos) {
+  for (const p of players) { if (p.properties.includes(pos)) return p; }
+  return null;
+}
+
+function resolveJailEntryDecision({ hasCard, money, choice }) {
+  if (choice === 'use-card' && hasCard) {
+    return { leaveJail: true, consumeCard: true, bailPaid: 0, continueTurn: false };
+  }
+  return { leaveJail: false, consumeCard: false, bailPaid: 0, continueTurn: false };
+}
+
+function applyJailEntryDecision(player, choice) {
+  const result = resolveJailEntryDecision({
+    hasCard: player.hasGetOutOfJailCard,
+    money: player.money,
+    choice,
+  });
+
+  if (result.consumeCard) {
+    player.hasGetOutOfJailCard = false;
+    notify(`${player.name} 使用出狱免费卡，立即出狱！`);
+    addGameLog('jail', player.name, '使用出狱免费卡解除监狱状态');
+  }
+  if (result.leaveJail) {
+    player.inJail = false;
+    player.jailTurns = 0;
+    player.consecutiveDoubles = 0;
+  } else {
+    notify(`${player.name} 选择留在监狱，本回合结束。`);
+    addGameLog('jail', player.name, '保留出狱卡，继续留在监狱');
+  }
+  renderBoard();
+  updateUI({ refreshBoard: false });
+  endTurn(false);
+}
+
+function showJailDecisionModal(player) {
+  const releaseButton = document.getElementById('btnJailRelease');
+  const stayButton = document.getElementById('btnJailStay');
+
+  document.getElementById('jailDecisionTitle').textContent = `${player.name} 进入监狱`;
+  document.getElementById('jailDecisionBody').innerHTML = `
+    <div>你拥有一张<strong style="color:var(--gold-light);">出狱免费卡</strong>。</div>
+    <div style="margin-top:8px;font-size:0.8rem;color:rgba(232,213,183,0.65);">
+      使用后立即解除监狱状态，但当前回合仍会结束。
+    </div>`;
+
+  releaseButton.textContent = '使用出狱卡';
+  releaseButton.disabled = false;
+  stayButton.textContent = '暂不使用';
+  document.getElementById('jailDecisionModal').classList.remove('hidden');
+
+  releaseButton.onclick = () => {
+    document.getElementById('jailDecisionModal').classList.add('hidden');
+    applyJailEntryDecision(player, 'use-card');
+  };
+  stayButton.onclick = () => {
+    document.getElementById('jailDecisionModal').classList.add('hidden');
+    applyJailEntryDecision(player, 'stay');
+  };
+}
+
+function handleJailEntry(player, reason = `${player.name} 被送进监狱！`) {
+  player.position = 10;
+  player.inJail = true;
+  player.jailTurns = 0;
+  player.consecutiveDoubles = 0;
+  notify(reason);
+  addGameLog('jail', player.name, '进入监狱');
+  renderBoard();
+  updateUI({ refreshBoard: false });
+
+  if (player.isHuman) {
+    document.getElementById('btnRoll').disabled = true;
+    if (player.hasGetOutOfJailCard) showJailDecisionModal(player);
+    else {
+      notify(`${player.name} 没有出狱免费卡，本回合结束。`);
+      addGameLog('jail', player.name, '没有出狱卡，本回合结束');
+      endTurn(false);
+    }
+    return;
+  }
+
+  if (player.hasGetOutOfJailCard) applyJailEntryDecision(player, 'use-card');
+  else {
+    notify(`${player.name} 没有出狱免费卡，本回合结束。`);
+    addGameLog('jail', player.name, '没有出狱卡，本回合结束');
+    endTurn(false);
+  }
+}
+
+// ==================== DICE ====================
+function payBail() {
+  const player = players[currentPlayerIndex];
+  if (!player.inJail || !player.isHuman) return;
+  if (player.money < 500) { notify('资金不足，无法支付保释金。'); return; }
+  player.money -= 500;
+  freeParkingMoney += 500;
+  player.inJail = false;
+  player.jailTurns = 0;
+  player.consecutiveDoubles = 0;
+  notify(`${player.name} 支付 $500 保释金出狱！`);
+  addGameLog('loss', player.name, '支付 $500 保释金出狱');
+  document.getElementById('btnBail').style.display = 'none';
+  document.getElementById('btnRoll').disabled = false;
+  setStatus('点击掷骰子！');
+  renderBoard(); updateUI({ refreshBoard: false });
+}
+
+function rollDice() {
+  if (!canCurrentPlayerRoll()) return;
+  consumeTradeWindow();
+
+  const btn = document.getElementById('btnRoll');
+  btn.disabled = true;
+
+  const d1 = Math.floor(Math.random() * 6) + 1;
+  const d2 = Math.floor(Math.random() * 6) + 1;
+
+  const dice1El = document.getElementById('dice1');
+  const dice2El = document.getElementById('dice2');
+  if (!dice1El || !dice2El) return;
+
+  dice1El.classList.add('rolling');
+  dice2El.classList.add('rolling');
+
+  setTimeout(() => {
+    renderDice(dice1El, d1);
+    renderDice(dice2El, d2);
+    dice1El.classList.remove('rolling');
+    dice2El.classList.remove('rolling');
+
+    const isDouble = d1 === d2;
+    lastDiceRoll = [d1, d2];
+    showDiceResult(d1, d2, isDouble, () => {
+      processTurn(d1 + d2, isDouble, d1, d2);
+    });
+  }, 500);
+}
+
+function renderDice(el, value) {
+  const dotMap = {
+    1: [[1,1]], 2: [[0,2],[2,0]], 3: [[0,2],[1,1],[2,0]],
+    4: [[0,0],[0,2],[2,0],[2,2]], 5: [[0,0],[0,2],[1,1],[2,0],[2,2]],
+    6: [[0,0],[0,2],[1,0],[1,2],[2,0],[2,2]],
+  };
+  const dots = dotMap[value];
+  const spans = el.querySelectorAll('span');
+  spans.forEach(s => s.className = '');
+  dots.forEach(([r, c]) => { const idx = r * 3 + c; if (spans[idx]) spans[idx].className = 'dot'; });
+}
+
+// ==================== TURN LOGIC ====================
+function processTurn(steps, isDouble, d1, d2) {
+  const player = players[currentPlayerIndex];
+  let pos = player.position;
+  let passedGo = false;
+
+  // Track consecutive doubles
+  if (isDouble) {
+    player.consecutiveDoubles++;
+    if (player.consecutiveDoubles >= 3) {
+      handleJailEntry(player, `${player.name} 连续3次掷出双数，直接进监狱！`);
+      return;
+    }
+  } else {
+    player.consecutiveDoubles = 0;
+  }
+
+  if (player.inJail) {
+    if (isDouble) {
+      player.inJail = false;
+      player.jailTurns = 0;
+      player.consecutiveDoubles = 0;
+      notify('掷出双数，出狱！');
+    } else {
+      player.jailTurns++;
+      if (player.jailTurns >= 3) {
+        player.money -= 500; freeParkingMoney += 500; player.inJail = false; player.jailTurns = 0; notify(`${player.name} 付 $500 保释金出狱。`);
+      } else {
+        notify(`${player.name} 还在监狱中...（第${player.jailTurns}回合）`);
+        endTurn(isDouble); return;
+      }
+    }
+  }
+
+  const path = [];
+  for (let i = 0; i < steps; i++) {
+    pos = (pos + 1) % BOARD_SIZE;
+    path.push(pos);
+    if (pos === 0) { player.money += 1000; passedGo = true; }
+  }
+  const finalPos = pos;
+
+  animateMove(player, path, finalPos, passedGo, () => {
+    renderBoard(); updateUI({ refreshBoard: false });
+    if (player.isHuman) { handleLandingHuman(player, finalPos, isDouble, d1, d2); }
+    else { handleLandingAI(player, finalPos, isDouble, d1, d2); }
+  });
+}
+
+function getNextActivePlayerIndex(fromIndex) {
+  for (let offset = 1; offset <= players.length; offset++) {
+    const index = (fromIndex + offset) % players.length;
+    if (isPlayerActive(players[index])) return index;
+  }
+  return fromIndex;
+}
+
+function beginPlayerTurn(player) {
+  openTradeWindowForPlayer(player);
+  updateUI();
+  if (player.isHuman) {
+    document.getElementById('btnRoll').disabled = false;
+    setStatus('可先交易，或点击掷骰子开始回合。');
+    return;
+  }
+  // AI trade evaluation: skip if no valid targets (e.g. setting off + no AI opponent)
+  if (!allowAIInitiatedHumanTrades && !getActivePlayers().some(p => p.id !== player.id && !p.isHuman)) {
+    consumeTradeWindow();
+    setStatus(`${player.name} 思考中...`);
+    setTimeout(() => aiRollDice(), 500);
+    return;
+  }
+  setStatus(`${player.name} 正在评估交易...`);
+  attemptAITradeAtTurnStart(player, () => {
+    consumeTradeWindow();
+    if (!gameOver && isPlayerActive(player)) {
+      setStatus(`${player.name} 思考中...`);
+      setTimeout(() => aiRollDice(), 500);
+    }
+  });
+}
+
+function endTurn(wasDouble) {
+  if (gameOver) return;
+
+  if (wasDouble) {
+    const player = players[currentPlayerIndex];
+    if (player.isHuman) {
+      document.getElementById('btnRoll').disabled = false;
+      setStatus('掷出了双数！再掷一次！');
+    } else { setTimeout(() => aiRollDice(), 800); }
+    return;
+  }
+
+  recordCompletedTurn(players[currentPlayerIndex].id);
+  currentPlayerIndex = getNextActivePlayerIndex(currentPlayerIndex);
+  beginPlayerTurn(players[currentPlayerIndex]);
+}
+
+// ==================== HUMAN LANDING ====================
+function handleLandingHuman(player, pos, isDouble, d1, d2) {
+  const space = SPACES[pos];
+
+  switch (space.type) {
+    case 'property':
+      const owner = getOwner(pos);
+      if (owner === null) {
+        if (player.money >= space.price) { showBuyModal(pos, space, isDouble); }
+        else { notify('资金不足，无法购买，进入拍卖！'); startAuction(pos, isDouble); }
+      } else if (owner.id !== player.id) {
+        const rent = calculateRent(pos, owner, d1, d2);
+        player.money -= rent; owner.money += rent;
+        showPenaltyAnimation(rent);
+        notify(`${player.name} 支付 $${rent} 租金给 ${owner.name}！`);
+        addGameLog('loss', player.name, `向 ${owner.name} 支付 $${rent} 租金`);
+        addGameLog('gain', owner.name, `收到 ${player.name} 的 $${rent} 租金`);
+        const resumeAfterRent = () => endTurn(isDouble);
+        if (!checkBankruptcy(player, owner, resumeAfterRent)) resumeAfterRent();
+      } else { notify('这是你的地产。'); endTurn(isDouble); }
+      break;
+
+    case 'chance': handleCard('chance', player, isDouble, d1, d2); break;
+    case 'destiny': handleCard('destiny', player, isDouble, d1, d2); break;
+
+    case 'tax':
+      // 所得税: 现金的10%, 最低200, 最高2000（规则文档第203-205行）
+      if (space.name === '所得税') {
+        const taxAmount = Math.max(200, Math.min(2000, Math.floor(player.money * 0.1)));
+        player.money -= taxAmount;
+        showPenaltyAnimation(taxAmount);
+        notify(`${player.name} 缴纳所得税 $${taxAmount}（现金的10%）。`);
+        addGameLog('loss', player.name, `缴纳所得税 $${taxAmount}`);
+      } else {
+        // 豪宅税: 拥有8个以上建筑时，每个建筑缴纳100（规则文档第209-210行）
+        let totalBuildings = 0;
+        for (const pos of player.properties) {
+          totalBuildings += (houseOwnership[pos] || 0);
+        }
+        if (totalBuildings >= 8) {
+          const luxuryTax = totalBuildings * 100;
+          player.money -= luxuryTax;
+          freeParkingMoney += luxuryTax;
+          showPenaltyAnimation(luxuryTax);
+          notify(`${player.name} 缴纳豪宅税 $${luxuryTax}（${totalBuildings}个建筑 × $100）。`);
+          addGameLog('loss', player.name, `缴纳豪宅税 $${luxuryTax}`);
+        } else {
+          notify(`${player.name} 未达到豪宅税起征点（需8个以上建筑）。`);
+        }
+      }
+      const resumeAfterTax = () => endTurn(isDouble);
+      if (!checkBankruptcy(player, null, resumeAfterTax)) resumeAfterTax();
+      break;
+
+    case 'goToJail':
+      handleJailEntry(player);
+      break;
+
+    case 'freeParking':
+      if (freeParkingMoney > 0) {
+        const prize = freeParkingMoney;
+        player.money += prize;
+        notify(`${player.name} 获得免费停车奖金 $${prize}！`);
+        addGameLog('gain', player.name, `获得免费停车奖金 $${prize}`);
+        freeParkingMoney = 0;
+      }
+      else { notify('免费停车，休息一下。'); }
+      endTurn(isDouble); break;
+
+    case 'go': case 'jail': endTurn(isDouble); break;
+    default: endTurn(isDouble);
+  }
+}
+
+// ==================== AI ====================
+function aiRollDice() {
+  if (gameOver) return;
+  const d1 = Math.floor(Math.random() * 6) + 1;
+  const d2 = Math.floor(Math.random() * 6) + 1;
+  const isDouble = d1 === d2;
+  lastDiceRoll = [d1, d2];
+
+  const dice1El = document.getElementById('dice1'), dice2El = document.getElementById('dice2');
+  if (dice1El && dice2El) { renderDice(dice1El, d1); renderDice(dice2El, d2); }
+
+  showDiceResult(d1, d2, isDouble, () => {
+    processTurnAI(d1 + d2, isDouble, d1, d2);
+  });
+}
+
+function processTurnAI(steps, isDouble, d1, d2) {
+  const player = players[currentPlayerIndex];
+  if (player.isHuman) return;
+
+  let pos = player.position;
+  let passedGo = false;
+
+  // Track consecutive doubles
+  if (isDouble) {
+    player.consecutiveDoubles++;
+    if (player.consecutiveDoubles >= 3) {
+      handleJailEntry(player, `${player.name} 连续3次掷出双数，直接进监狱！`);
+      return;
+    }
+  } else {
+    player.consecutiveDoubles = 0;
+  }
+
+  if (player.inJail) {
+    if (isDouble) {
+      player.inJail = false;
+      player.jailTurns = 0;
+      player.consecutiveDoubles = 0;
+      notify(`${player.name} 掷出双数出狱！`);
+    } else {
+      player.jailTurns++;
+      if (player.jailTurns >= 3) {
+        if (player.money >= 500) { player.money -= 500; freeParkingMoney += 500; player.inJail = false; player.jailTurns = 0; notify(`${player.name} 付 $500 保释金出狱。`); }
+        else { notify(`${player.name} 还在监狱中...`); endTurn(isDouble); return; }
+      } else { notify(`${player.name} 还在监狱中...`); endTurn(isDouble); return; }
+    }
+  }
+
+  const path = [];
+  for (let i = 0; i < steps; i++) { pos = (pos + 1) % BOARD_SIZE; path.push(pos); if (pos === 0) { player.money += 1000; passedGo = true; } }
+  const finalPos = pos;
+
+  animateMove(player, path, finalPos, passedGo, () => {
+    renderBoard(); updateUI({ refreshBoard: false });
+    handleLandingAI(player, finalPos, isDouble, d1, d2);
+  });
+}
+
+function handleLandingAI(player, pos, isDouble, d1, d2) {
+  const space = SPACES[pos];
+
+  switch (space.type) {
+    case 'property':
+      const owner = getOwner(pos);
+      if (owner === null) {
+        // AI buying strategy: buy if affordable, prioritize properties where AI already owns part of the group
+        const group = space.group;
+        const groupPositions = group && COLOR_GROUPS[group] ? COLOR_GROUPS[group] : [];
+        const ownedInGroup = groupPositions.filter(p => player.properties.includes(p)).length;
+        const groupTotal = groupPositions.length;
+        const hasGroupInterest = group && ownedInGroup > 0;
+        const minReserve = hasGroupInterest ? 100 : 200;
+        const fullGroupBonus = (group && ownedInGroup + 1 >= groupTotal) ? 0 : 50; // More likely to buy if it completes a group
+
+        if (player.money >= space.price && player.money - space.price > minReserve - fullGroupBonus) {
+          player.money -= space.price; player.properties.push(pos);
+          notify(`${player.name} 购买了 ${space.name}。`);
+          addGameLog('property', player.name, `以 $${space.price} 购买 ${space.name}`);
+        } else {
+          notify(`${player.name} 选择不购买 ${space.name}，进入拍卖。`);
+          startAuction(pos, isDouble);
+          return;
+        }
+      } else if (owner.id !== player.id) {
+        const rent = calculateRent(pos, owner, d1, d2);
+        player.money -= rent; owner.money += rent;
+        if (owner.isHuman) showPenaltyAnimation(rent);
+        notify(`${player.name} 支付 $${rent} 租金给 ${owner.name}。`);
+        addGameLog('loss', player.name, `向 ${owner.name} 支付 $${rent} 租金`);
+        addGameLog('gain', owner.name, `收到 ${player.name} 的 $${rent} 租金`);
+        if (checkBankruptcy(player, owner)) return;
+      }
+      break;
+
+    case 'chance': handleCardAI('chance', player, isDouble, d1, d2); return;
+    case 'destiny': handleCardAI('destiny', player, isDouble, d1, d2); return;
+    case 'tax':
+      // 所得税: 现金的10%, 最低200, 最高2000（规则文档第203-205行）
+      if (space.name === '所得税') {
+        const taxAmount = Math.max(200, Math.min(2000, Math.floor(player.money * 0.1)));
+        player.money -= taxAmount;
+        notify(`${player.name} 缴纳所得税 $${taxAmount}（现金的10%）。`);
+        addGameLog('loss', player.name, `缴纳所得税 $${taxAmount}`);
+      } else {
+        // 豪宅税: 拥有8个以上建筑时，每个建筑缴纳100（规则文档第209-210行）
+        let totalBuildings = 0;
+        for (const pos of player.properties) {
+          totalBuildings += (houseOwnership[pos] || 0);
+        }
+        if (totalBuildings >= 8) {
+          const luxuryTax = totalBuildings * 100;
+          player.money -= luxuryTax;
+          freeParkingMoney += luxuryTax;
+          notify(`${player.name} 缴纳豪宅税 $${luxuryTax}（${totalBuildings}个建筑 × $100）。`);
+          addGameLog('loss', player.name, `缴纳豪宅税 $${luxuryTax}`);
+        } else {
+          notify(`${player.name} 未达到豪宅税起征点。`);
+        }
+      }
+      break;
+    case 'goToJail':
+      handleJailEntry(player);
+      return;
+    case 'freeParking':
+      if (freeParkingMoney > 0) {
+        const prize = freeParkingMoney;
+        player.money += prize;
+        notify(`${player.name} 获得免费停车奖金 $${prize}！`);
+        addGameLog('gain', player.name, `获得免费停车奖金 $${prize}`);
+        freeParkingMoney = 0;
+      }
+      break;
+  }
+
+  // AI house building
+  aiBuildHouses(player);
+
+  if (!checkBankruptcy(player)) endTurn(isDouble);
+}
+
+// ==================== AI HOUSE BUILDING ====================
+function aiBuildHouses(player) {
+  if (player.money < 800) return;
+  let built = 0;
+  const maxBuildsPerTurn = 3;
+  const groups = Object.entries(COLOR_GROUPS);
+  for (const [group, positions] of groups) {
+    if (built >= maxBuildsPerTurn) break;
+    const owned = positions.filter(p => player.properties.includes(p));
+    if (owned.length !== positions.length) continue;
+    // Build evenly
+    const minHouses = Math.min(...owned.map(p => houseOwnership[p] || 0));
+    if (minHouses >= 4) continue; // 最高4级=地标（规则文档第84-89行）
+    const cost = HOUSE_COST[group];
+    for (const pos of owned) {
+      if (built >= maxBuildsPerTurn) break;
+      const h = houseOwnership[pos] || 0;
+      if (h === minHouses && h < 4 && player.money >= cost + 500 && canBuildHouse(player, pos)) {
+        player.money -= cost;
+        houseOwnership[pos] = h + 1;
+        const label = HOUSE_LEVEL_NAMES[houseOwnership[pos]]; // 规则文档第84-89行
+        notify(`${player.name} 在 ${SPACES[pos].name} 建造了${label}！($${cost})`);
+        addGameLog('building', player.name, `在 ${SPACES[pos].name} 建造${label}，花费 $${cost}`);
+        built++;
+      }
+    }
+  }
+}
+
+// ==================== CARDS ====================
+function handleCard(type, player, isDouble, d1, d2) {
+  const deck = type === 'chance' ? CHANCE_CARDS : DESTINY_CARDS;
+  const card = deck[Math.floor(Math.random() * deck.length)];
+  const title = type === 'chance' ? '机会卡' : '社区福利卡';
+
+  document.getElementById('cardModalTitle').textContent = title;
+  document.getElementById('cardModalBody').textContent = card.text;
+  document.getElementById('cardModal').classList.remove('hidden');
+
+  document.getElementById('btnCardOk').onclick = () => {
+    document.getElementById('cardModal').classList.add('hidden');
+
+    // "任意传送"：人类玩家进入选择模式，AI随机传送
+    if (card.text.includes('任意传送')) {
+      if (player.isHuman) {
+        activateTeleport(player, isDouble, d1, d2);
+        return;
+      }
+      // AI: 随机传送
+      const newPos = Math.floor(Math.random() * BOARD_SIZE);
+      player.position = newPos;
+      notify(`${title}: 传送到 ${SPACES[newPos].name}！`);
+      addGameLog('card', player.name, `${title}：传送到 ${SPACES[newPos].name}`);
+      if (checkAllBankruptcies(player)) return;
+      renderBoard(); updateUI({ refreshBoard: false });
+      handleLandingAI(player, player.position, isDouble, d1, d2);
+      return;
+    }
+
+    const oldPos = player.position;
+    const msg = card.action(player);
+
+    const continueCardResolution = () => {
+      if (player.inJail && !gameOver) {
+        handleJailEntry(player, `${title}: ${msg}`);
+        return;
+      }
+      notify(`${title}: ${msg}`);
+      addGameLog('card', player.name, `${title}：${msg}`);
+      renderBoard();
+      updateUI({ refreshBoard: false });
+      if (player.position !== oldPos && !gameOver) {
+        handleLandingHuman(player, player.position, isDouble, d1, d2);
+      } else {
+        endTurn(isDouble);
+      }
+    };
+    if (!checkAllBankruptcies(player, continueCardResolution)) {
+      continueCardResolution();
+    }
+  };
+}
+
+function handleCardAI(type, player, isDouble, d1, d2) {
+  const deck = type === 'chance' ? CHANCE_CARDS : DESTINY_CARDS;
+  const card = deck[Math.floor(Math.random() * deck.length)];
+  const title = type === 'chance' ? '机会卡' : '社区福利卡';
+  const oldPos = player.position;
+  const msg = card.action(player);
+  if (checkAllBankruptcies(player)) return;
+  if (player.inJail && !gameOver) {
+    handleJailEntry(player, `${title}: ${msg} (${player.name})`);
+    return;
+  }
+  notify(`${title}: ${msg} (${player.name})`);
+  addGameLog('card', player.name, `${title}：${msg}`);
+  renderBoard(); updateUI({ refreshBoard: false });
+  // Re-process landing if card moved the player to a new position
+  if (player.position !== oldPos && !gameOver) {
+    handleLandingAI(player, player.position, isDouble, d1, d2);
+  } else {
+    aiBuildHouses(player);
+    if (!checkAllBankruptcies(player)) endTurn(isDouble);
+  }
+}
+
+// ==================== TELEPORT MODE ====================
+function activateTeleport(player, isDouble, d1, d2) {
+  teleportMode = true;
+  teleportData = { player, isDouble, d1, d2 };
+  notify('请点击棋盘上的格子，选择传送目的地！');
+  renderBoard(); // 重新渲染，高亮所有可点击的格子
+}
+
+function handleTeleportClick(targetPos) {
+  if (!teleportMode || !teleportData) return;
+  const { player, isDouble, d1, d2 } = teleportData;
+  teleportMode = false;
+  teleportData = null;
+
+  const oldPos = player.position;
+  player.position = targetPos;
+  notify(`${player.name} 传送到 ${SPACES[targetPos].name}！`);
+  addGameLog('card', player.name, `传送到 ${SPACES[targetPos].name}`);
+  renderBoard(); updateUI({ refreshBoard: false });
+  if (checkBankruptcy(player)) return;
+
+  const continueTeleport = () => {
+    if (player.position !== oldPos && !gameOver) {
+      handleLandingHuman(player, player.position, isDouble, d1, d2);
+    } else {
+      endTurn(isDouble);
+    }
+  };
+  if (!checkBankruptcy(player, null, continueTeleport)) continueTeleport();
+}
+
+// ==================== BUY MODAL ====================
+function showBuyModal(pos, space, isDouble) {
+  document.getElementById('buyModalTitle').textContent = space.name;
+  document.getElementById('buyModalBody').innerHTML = `
+    <div class="prop-name">${space.name}</div>
+    <div class="prop-price">价格: $${space.price}</div>
+    ${space.group && space.group !== 'railroad' && space.group !== 'utility' ? `<div style="font-size:0.7rem;margin-top:4px;color:rgba(232,213,183,0.5);">拥有同色全地产，租金翻倍；可建造房屋</div>` : ''}
+  `;
+  document.getElementById('buyModal').classList.remove('hidden');
+
+  document.getElementById('btnBuy').onclick = () => {
+    const player = players[currentPlayerIndex];
+    player.money -= space.price;
+    player.properties.push(pos);
+    document.getElementById('buyModal').classList.add('hidden');
+    notify(`购买了 ${space.name}！`);
+    addGameLog('property', player.name, `以 $${space.price} 购买 ${space.name}`);
+    renderBoard(); updateUI({ refreshBoard: false }); endTurn(isDouble);
+  };
+
+  document.getElementById('btnSkip').onclick = () => {
+    document.getElementById('buyModal').classList.add('hidden');
+    notify(`放弃购买 ${space.name}，进入拍卖！`);
+    startAuction(pos, isDouble);
+  };
+}
+
+// ==================== RENT CALCULATION ====================
+// 规则文档: 空地租金=地价10%(第79行), 倍率0=1x/1=3x/2=6x/3=12x/4=20x(第94-99行)
+// 垄断且无建筑: 基础租金翻倍(第107-109行)
+function calculateRent(pos, owner, d1, d2) {
+  const space = SPACES[pos];
+  if (!space.baseRent) return 0;
+  if (mortgageStatus[pos]) return 0; // 抵押地产不收租（规则文档第137-143行）
+
+  const group = space.group;
+  const groupProps = COLOR_GROUPS[group] || [];
+  const ownedInGroup = owner.properties.filter(p => groupProps.includes(p)).length;
+  const houses = houseOwnership[pos] || 0;
+  const hasMonopoly = ownedInGroup === groupProps.length;
+
+  // 垄断且无建筑：基础租金翻倍
+  if (hasMonopoly && houses === 0) {
+    return space.baseRent * 2;
+  }
+
+  // 有建筑：基础租金 × 倍率
+  if (houses > 0) {
+    return space.baseRent * RENT_MULTIPLIER[houses];
+  }
+
+  // 无垄断空地：基础租金（地价10%）
+  return space.baseRent;
+}
+
+// ==================== HOUSE BUILDING ====================
+// 规则文档: 0=空地/1=房屋/2=公寓/3=酒店/4=地标(第84-89行), 必须平均建设(第120-131行)
+function canBuildHouse(player, pos) {
+  const space = SPACES[pos];
+  if (!space.group) return false;
+  if (!player.properties.includes(pos)) return false;
+
+  const group = space.group;
+  const groupProps = COLOR_GROUPS[group] || [];
+  const owned = player.properties.filter(p => groupProps.includes(p));
+  if (owned.length !== groupProps.length) return false;
+  if (groupProps.some(p => mortgageStatus[p])) return false;
+
+  const currentHouses = houseOwnership[pos] || 0;
+  if (currentHouses >= 4) return false; // 最高4级=地标
+
+  // Must build evenly
+  const minHouses = Math.min(...owned.map(p => houseOwnership[p] || 0));
+  if (currentHouses > minHouses) return false;
+
+  const cost = HOUSE_COST[group];
+  return player.money >= cost;
+}
+
+function buildHouse(player, pos) {
+  if (!canBuildHouse(player, pos)) return;
+  const cost = HOUSE_COST[SPACES[pos].group];
+  player.money -= cost;
+  houseOwnership[pos] = (houseOwnership[pos] || 0) + 1;
+  const level = houseOwnership[pos];
+  const label = HOUSE_LEVEL_NAMES[level]; // 规则文档第84-89行
+  notify(`${player.name} 在 ${SPACES[pos].name} 建造了${label}！($${cost})`);
+  addGameLog('building', player.name, `在 ${SPACES[pos].name} 建造${label}，花费 $${cost}`);
+  renderBoard(); updateUI({ refreshBoard: false });
+}
+
+function canSellHouse(player, pos) {
+  if (!player.properties.includes(pos)) return false;
+  const h = houseOwnership[pos] || 0;
+  if (h === 0) return false;
+  const space = SPACES[pos];
+  if (!space.group) return false;
+  // 必须平均出售：只能从等级最高的地产出售
+  const groupProps = COLOR_GROUPS[space.group] || [];
+  const maxHouses = Math.max(...groupProps.map(p => houseOwnership[p] || 0));
+  return h >= maxHouses;
+}
+
+// ==================== MORTGAGE / UNMORTGAGE ====================
+// 规则文档: 抵押=原价50%, 解押=抵押金额+10%手续费(第137-143行)
+function canMortgage(player, pos) {
+  if (!player.properties.includes(pos)) return false;
+  if (mortgageStatus[pos]) return false; // 已抵押
+  if (houseOwnership[pos]) return false; // 有建筑不能抵押
+  // 同色组内其他地产有建筑也不能抵押
+  const space = SPACES[pos];
+  const group = space.group;
+  if (group) {
+    const groupProps = COLOR_GROUPS[group] || [];
+    for (const p of groupProps) {
+      if (houseOwnership[p]) return false;
+    }
+  }
+  return true;
+}
+
+function mortgageProperty(player, pos) {
+  if (!canMortgage(player, pos)) return;
+  const price = SPACES[pos].price;
+  const mortgageValue = Math.floor(price * 0.5);
+  player.money += mortgageValue;
+  mortgageStatus[pos] = true;
+  notify(`${player.name} 抵押了 ${SPACES[pos].name}，获得 $${mortgageValue}。`);
+  addGameLog('property', player.name, `抵押 ${SPACES[pos].name}，获得 $${mortgageValue}`);
+  renderBoard(); updateUI({ refreshBoard: false });
+}
+
+function canUnmortgage(player, pos) {
+  if (!player.properties.includes(pos)) return false;
+  if (!mortgageStatus[pos]) return false;
+  const price = SPACES[pos].price;
+  const cost = Math.floor(price * 0.5 * 1.1); // 抵押金额 + 10%手续费
+  return player.money >= cost;
+}
+
+function unmortgageProperty(player, pos) {
+  if (!canUnmortgage(player, pos)) return;
+  const price = SPACES[pos].price;
+  const cost = Math.floor(price * 0.5 * 1.1);
+  player.money -= cost;
+  mortgageStatus[pos] = false;
+  notify(`${player.name} 解押了 ${SPACES[pos].name}，支付 $${cost}。`);
+  addGameLog('loss', player.name, `解押 ${SPACES[pos].name}，支付 $${cost}`);
+  renderBoard(); updateUI({ refreshBoard: false });
+}
+
+// ==================== SELL HOUSE BACK TO BANK ====================
+// 半价卖回银行（规则文档第226-232行：破产时先卖建筑）
+function sellHouse(player, pos) {
+  const h = houseOwnership[pos] || 0;
+  if (h === 0) return;
+  const cost = HOUSE_COST[SPACES[pos].group];
+  const refund = Math.floor(cost * 0.5);
+  player.money += refund;
+  houseOwnership[pos] = h - 1;
+  const label = HOUSE_LEVEL_NAMES[houseOwnership[pos]] || '空地';
+  notify(`${player.name} 出售了 ${SPACES[pos].name} 的建筑，退回 $${refund}（现为${label}）。`);
+  addGameLog('building', player.name, `出售 ${SPACES[pos].name} 建筑，收回 $${refund}`);
+  renderBoard(); updateUI({ refreshBoard: false });
+}
+
+function getDebtReliefActions(player) {
+  const sellableBuildings = [];
+  const mortgageableProperties = [];
+
+  for (const pos of player.properties) {
+    if (canSellHouse(player, pos)) {
+      sellableBuildings.push({
+        pos,
+        refund: Math.floor((HOUSE_COST[SPACES[pos].group] || 0) * 0.5),
+      });
+    }
+    if (canMortgage(player, pos)) {
+      mortgageableProperties.push({
+        pos,
+        value: Math.floor(SPACES[pos].price * 0.5),
+      });
+    }
+  }
+
+  return { sellableBuildings, mortgageableProperties };
+}
+
+function hasDebtReliefActions(actions) {
+  return actions.sellableBuildings.length > 0
+    || actions.mortgageableProperties.length > 0;
+}
+
+function getDebtReliefBlockReason(player, pos) {
+  if (mortgageStatus[pos]) return '已抵押';
+  if (houseOwnership[pos] && !canSellHouse(player, pos)) return '需遵守平均出售规则';
+  const group = COLOR_GROUPS[SPACES[pos].group] || [];
+  if (group.some(id => houseOwnership[id])) return '同色组仍有建筑，不能抵押';
+  return '当前没有可处置项目';
+}
+
+function showDebtReliefModal() {
+  const state = debtReliefState;
+  const player = players.find(candidate => candidate.id === state?.playerId);
+  if (!state || !player) return;
+  const actions = getDebtReliefActions(player);
+  const sellable = new Map(actions.sellableBuildings.map(item => [item.pos, item]));
+  const mortgageable = new Map(actions.mortgageableProperties.map(item => [item.pos, item]));
+  const needed = Math.max(0, -player.money);
+  const repaid = Math.max(0, state.initialDebt - needed);
+  const progress = Math.min(100, Math.round((repaid / state.initialDebt) * 100));
+
+  document.getElementById('debtReliefTitle').textContent = `${player.name} · 债务处置`;
+  document.getElementById('debtReliefCash').textContent = `$${player.money}`;
+  document.getElementById('debtReliefNeeded').textContent = `$${needed}`;
+  document.getElementById('debtReliefProgress').style.width = `${progress}%`;
+  document.getElementById('debtReliefAssets').innerHTML = player.properties.map(pos => {
+    const space = SPACES[pos];
+    const sale = sellable.get(pos);
+    const mortgage = mortgageable.get(pos);
+    const action = sale
+      ? `<button class="btn-house" onclick="performDebtReliefAction('sell-building',${pos})">出售建筑 +$${sale.refund}</button>`
+      : mortgage
+        ? `<button class="btn-house" onclick="performDebtReliefAction('mortgage',${pos})">抵押 +$${mortgage.value}</button>`
+        : `<span class="debt-relief-reason">${getDebtReliefBlockReason(player, pos)}</span>`;
+    return `<div class="debt-relief-row">
+      <div>
+        <strong>${escapeHTML(space.name)}</strong>
+        <span class="debt-relief-reason">${HOUSE_LEVEL_NAMES[houseOwnership[pos] || 0]} · ${mortgageStatus[pos] ? '已抵押' : '未抵押'}</span>
+      </div>
+      ${action}
+    </div>`;
+  }).join('');
+  document.getElementById('debtReliefModal').classList.remove('hidden');
+}
+
+function performDebtReliefAction(type, pos) {
+  const state = debtReliefState;
+  const player = players.find(candidate => candidate.id === state?.playerId);
+  if (!state || !player || player.money >= 0) return;
+
+  if (type === 'sell-building' && canSellHouse(player, pos)) {
+    sellHouse(player, pos);
+  } else if (type === 'mortgage' && canMortgage(player, pos)) {
+    mortgageProperty(player, pos);
+  } else {
+    document.getElementById('debtReliefStatus').textContent = '该资产当前不可处置。';
+    showDebtReliefModal();
+    return;
+  }
+  resolveDebtReliefProgress();
+}
+
+function resolveDebtReliefProgress() {
+  const state = debtReliefState;
+  const player = players.find(candidate => candidate.id === state?.playerId);
+  if (!state || !player) return;
+
+  if (player.money >= 0) {
+    addGameLog('system', player.name, `完成债务处置，当前现金 $${player.money}`);
+    finishDebtRelief(true);
+    updateUI();
+    return;
+  }
+
+  const actions = getDebtReliefActions(player);
+  if (!hasDebtReliefActions(actions)) {
+    const creditor = players.find(candidate => candidate.id === state.creditorId) || null;
+    finishDebtRelief(false);
+    finalizePlayerBankruptcy(player, creditor);
+    return;
+  }
+  showDebtReliefModal();
+}
+
+// ==================== AUCTION SYSTEM ====================
+// 规则文档: 无人购买→银行立即拍卖, 起拍价100, 每次加价至少50(第216-221行)
+let auctionState = null; // { pos, highestBid, highestBidder, biddingPlayerIndex, activeBidderIds }
+
+function getMinimumAuctionBid(state) {
+  return state.highestBidder ? state.highestBid + 50 : state.highestBid;
+}
+
+function validateAuctionBid(rawValue, playerMoney, minBid) {
+  const text = String(rawValue).trim();
+  if (!/^\d+$/.test(text)) {
+    return { valid: false, value: null, message: '请输入整数出价。' };
+  }
+
+  const value = Number(text);
+  if (value < minBid) {
+    return { valid: false, value, message: `出价不能低于 $${minBid}。` };
+  }
+  if (value > playerMoney) {
+    return { valid: false, value, message: `出价不能超过你的现金 $${playerMoney}。` };
+  }
+  return { valid: true, value, message: '' };
+}
+
+function getAuctionResolution(state) {
+  if (!state.highestBidder && state.activeBidderIds.length === 0) return 'unsold';
+  if (state.highestBidder) {
+    const competitors = state.activeBidderIds.filter(id => id !== state.highestBidder.id);
+    if (competitors.length === 0) return 'sold';
+  }
+  return 'continue';
+}
+
+function calculateAIAuctionReserve({ cash, highestOpponentRent, plannedBuildCost }) {
+  const reserve = Math.max(1000, cash * 0.15, highestOpponentRent, plannedBuildCost);
+  return Math.ceil(reserve / 50) * 50;
+}
+
+function calculateAIAuctionValuation({
+  price,
+  ownedInGroup,
+  groupTotal,
+  opponentNearMonopoly,
+  unownedPropertyCount,
+  canAffordDevelopment,
+}) {
+  let ratio = 0.5 + ownedInGroup * 0.1;
+  if (groupTotal > 0 && ownedInGroup + 1 >= groupTotal) ratio += 0.35;
+  else if (opponentNearMonopoly) ratio += 0.15;
+  if (unownedPropertyCount <= 8) ratio += 0.05;
+  if (!canAffordDevelopment) ratio -= 0.1;
+  ratio = Math.max(0.35, Math.min(0.95, ratio));
+  return Math.floor(price * ratio);
+}
+
+function calculateAIAuctionMaxBid({ cash, reserve, valuation }) {
+  return Math.max(0, Math.floor(Math.min(valuation, cash - reserve)));
+}
+
+function chooseAdaptiveAIBid({ minBid, maxBid, propertyPrice, opponentAggression }) {
+  const aggression = Math.max(0, Math.min(1, opponentAggression));
+  const step = Math.max(50, Math.round(propertyPrice * (0.05 + aggression * 0.05) / 50) * 50);
+  return Math.min(maxBid, minBid + step);
+}
+
+function resolveAIOnlyAuction({ currentBid, highestBidderId, candidates }) {
+  const requiredBid = highestBidderId === null ? currentBid : currentBid + 50;
+  const eligible = candidates
+    .filter(candidate => candidate.id === highestBidderId || candidate.maxBid >= requiredBid)
+    .sort((a, b) => b.maxBid - a.maxBid || a.id - b.id);
+  if (eligible.length === 0) return { winnerId: null, price: null };
+
+  const winner = eligible[0];
+  const runnerUp = eligible.find(candidate => candidate.id !== winner.id);
+  const floor = winner.id === highestBidderId ? currentBid : requiredBid;
+  const competitivePrice = runnerUp ? runnerUp.maxBid + 50 : floor;
+  return {
+    winnerId: winner.id,
+    price: Math.min(winner.maxBid, Math.max(floor, competitivePrice)),
+  };
+}
+
+function getHighestOpponentRent(player) {
+  let highestRent = 0;
+  for (const opponent of players) {
+    if (opponent.id === player.id) continue;
+    for (const pos of opponent.properties) {
+      highestRent = Math.max(highestRent, calculateRent(pos, opponent, 1, 1));
+    }
+  }
+  return highestRent;
+}
+
+function isOpponentNearMonopoly(player, groupPositions) {
+  return players.some(opponent => {
+    if (opponent.id === player.id) return false;
+    const owned = groupPositions.filter(pos => opponent.properties.includes(pos)).length;
+    return owned === groupPositions.length - 1;
+  });
+}
+
+function getAIAuctionMaxBid(player, pos) {
+  const space = SPACES[pos];
+  const groupPositions = COLOR_GROUPS[space.group] || [];
+  const ownedInGroup = groupPositions.filter(groupPos => player.properties.includes(groupPos)).length;
+  const completesGroup = groupPositions.length > 0 && ownedInGroup + 1 >= groupPositions.length;
+  const plannedBuildCost = completesGroup ? (HOUSE_COST[space.group] || 0) : 0;
+  const reserve = calculateAIAuctionReserve({
+    cash: player.money,
+    highestOpponentRent: getHighestOpponentRent(player),
+    plannedBuildCost,
+  });
+  const valuation = calculateAIAuctionValuation({
+    price: space.price,
+    ownedInGroup,
+    groupTotal: groupPositions.length,
+    opponentNearMonopoly: isOpponentNearMonopoly(player, groupPositions),
+    unownedPropertyCount: SPACES.filter((candidate, index) =>
+      candidate.type === 'property' && getOwner(index) === null
+    ).length,
+    canAffordDevelopment: plannedBuildCost === 0 || player.money - reserve >= plannedBuildCost,
+  });
+  return calculateAIAuctionMaxBid({ cash: player.money, reserve, valuation });
+}
+
+function recordAuctionBid(player, amount, propertyPrice) {
+  const profile = player.auctionProfile || (player.auctionProfile = {
+    bids: 0, passes: 0, bidRatioEMA: 0.5,
+  });
+  const ratio = Math.max(0, Math.min(1.5, amount / propertyPrice));
+  profile.bidRatioEMA = profile.bids === 0
+    ? ratio
+    : profile.bidRatioEMA * 0.7 + ratio * 0.3;
+  profile.bids++;
+}
+
+function recordAuctionPass(player) {
+  const profile = player.auctionProfile || (player.auctionProfile = {
+    bids: 0, passes: 0, bidRatioEMA: 0.5,
+  });
+  profile.passes++;
+}
+
+function getAuctionOpponentAggression(player) {
+  const competitors = players.filter(candidate =>
+    candidate.id !== player.id && auctionState.activeBidderIds.includes(candidate.id)
+  );
+  if (competitors.length === 0) return 0.5;
+  return competitors.reduce((total, competitor) =>
+    total + (competitor.auctionProfile?.bidRatioEMA ?? 0.5), 0
+  ) / competitors.length;
+}
+
+function startAuction(pos, isDouble, options = {}) {
+  const space = SPACES[pos];
+  const eligiblePlayers = options.eligiblePlayers || getActivePlayers();
+  auctionState = {
+    pos: pos,
+    highestBid: 100,
+    highestBidder: null,
+    biddingPlayerIndex: 0,
+    activeBidderIds: eligiblePlayers.filter(player => player.money >= 100).map(player => player.id),
+    aiMaxBidByPlayer: {},
+    isDouble: isDouble || false,
+    onComplete: options.onComplete || null,
+  };
+  for (const player of eligiblePlayers) {
+    if (!player.isHuman) auctionState.aiMaxBidByPlayer[player.id] = getAIAuctionMaxBid(player, pos);
+  }
+  auctionState.activeBidderIds = auctionState.activeBidderIds.filter(playerId => {
+    const player = players.find(candidate => candidate.id === playerId);
+    return player?.isHuman || auctionState.aiMaxBidByPlayer[playerId] >= 100;
+  });
+  notify(`拍卖开始！${space.name} 起拍价 $100！`);
+  addGameLog('auction', '', `${space.name} 开始拍卖，起拍价 $100`);
+  processAuctionBid();
+}
+
+function removeActiveAuctionBidder(playerId) {
+  if (!auctionState) return;
+  auctionState.activeBidderIds = auctionState.activeBidderIds.filter(id => id !== playerId);
+}
+
+function tryResolveAIOnlyAuction() {
+  if (!auctionState) return false;
+  const activePlayers = auctionState.activeBidderIds
+    .map(id => players.find(player => player.id === id))
+    .filter(Boolean);
+  if (activePlayers.length === 0 || activePlayers.some(player => player.isHuman)) return false;
+
+  const candidates = activePlayers.map(player => ({
+    id: player.id,
+    maxBid: auctionState.aiMaxBidByPlayer[player.id] || 0,
+  }));
+  const result = resolveAIOnlyAuction({
+    currentBid: auctionState.highestBid,
+    highestBidderId: auctionState.highestBidder?.id ?? null,
+    candidates,
+  });
+
+  if (result.winnerId === null) {
+    for (const player of activePlayers) {
+      recordAuctionPass(player);
+      removeActiveAuctionBidder(player.id);
+    }
+    return false;
+  }
+
+  const winner = players.find(player => player.id === result.winnerId);
+  for (const player of activePlayers) {
+    if (player.id !== winner.id) recordAuctionPass(player);
+  }
+  auctionState.highestBid = result.price;
+  auctionState.highestBidder = winner;
+  auctionState.activeBidderIds = [winner.id];
+  recordAuctionBid(winner, result.price, SPACES[auctionState.pos].price);
+  finalizeAuction(`AI竞价快速结算：${winner.name} 以 $${result.price} 成交！`);
+  return true;
+}
+
+function processAuctionBid() {
+  if (!auctionState) return;
+
+  const resolution = getAuctionResolution(auctionState);
+  if (resolution === 'sold') {
+    const winner = auctionState.highestBidder;
+    finalizeAuction(`无人继续竞价，${winner.name} 以 $${auctionState.highestBid} 自动成交！`);
+    return;
+  }
+  if (resolution === 'unsold') {
+    finalizeAuction();
+    return;
+  }
+  if (tryResolveAIOnlyAuction()) return;
+
+  const minBid = getMinimumAuctionBid(auctionState);
+  for (let attempts = 0; attempts < players.length; attempts++) {
+    const bidder = players[auctionState.biddingPlayerIndex];
+    const isActive = auctionState.activeBidderIds.includes(bidder.id);
+    const isHighestBidder = auctionState.highestBidder?.id === bidder.id;
+
+    if (!isActive || isHighestBidder) {
+      auctionState.biddingPlayerIndex = (auctionState.biddingPlayerIndex + 1) % players.length;
+      continue;
+    }
+
+    if (bidder.money < minBid) {
+      removeActiveAuctionBidder(bidder.id);
+      recordAuctionPass(bidder);
+      notify(`${bidder.name} 资金不足，退出本轮竞拍。`);
+      auctionState.biddingPlayerIndex = (auctionState.biddingPlayerIndex + 1) % players.length;
+      continue;
+    }
+
+    if (bidder.isHuman) showAuctionModal(bidder);
+    else aiAuctionBid(bidder);
+    return;
+  }
+
+  processAuctionBid();
+}
+
+function showAuctionModal(player) {
+  const space = SPACES[auctionState.pos];
+  const minBid = getMinimumAuctionBid(auctionState);
+  const safeBidderName = auctionState.highestBidder ? escapeHTML(auctionState.highestBidder.name) : '';
+  const safePlayerName = escapeHTML(player.name);
+  const competitorCount = auctionState.activeBidderIds.filter(id => id !== player.id).length;
+  const statusText = competitorCount === 0
+    ? '当前没有其他竞拍者；提交有效报价后将立即成交。'
+    : `仍有 ${competitorCount} 名其他竞拍者。`;
+  document.getElementById('auctionTitle').textContent = `拍卖: ${space.name}`;
+  document.getElementById('auctionBody').innerHTML = `
+    <div style="text-align:center;">
+      <div style="font-size:1.2rem;color:var(--gold);margin-bottom:8px;">${space.name}</div>
+      <div style="margin-bottom:12px;">当前出价: <b style="color:var(--gold-light);">$${auctionState.highestBid}</b>
+        ${auctionState.highestBidder ? ` (${safeBidderName})` : '（暂无出价）'}</div>
+      <div style="font-size:0.8rem;color:rgba(232,213,183,0.6);">轮到 ${safePlayerName} 出价（最低 $${minBid}）</div>
+      <label class="auction-bid-field" for="auctionBidInput">
+        <span class="auction-bid-prefix">$</span>
+        <input class="auction-bid-input" id="auctionBidInput" type="number"
+          min="${minBid}" max="${player.money}" step="1" inputmode="numeric"
+          value="${minBid}" aria-label="自定义出价金额"
+          aria-describedby="auctionBidHelp auctionBidError">
+      </label>
+      <div class="auction-bid-help" id="auctionBidHelp">可输入 $${minBid} 至 $${player.money} 的整数金额</div>
+      <div class="auction-bid-error" id="auctionBidError" role="alert" aria-live="polite"></div>
+      <div class="auction-status">${statusText}</div>
+    </div>
+  `;
+  document.getElementById('auctionModal').classList.remove('hidden');
+  const input = document.getElementById('auctionBidInput');
+  const error = document.getElementById('auctionBidError');
+  const bidButton = document.getElementById('btnAuctionBid');
+  bidButton.textContent = '确认出价';
+
+  const refreshValidation = () => {
+    const result = validateAuctionBid(input.value, player.money, minBid);
+    input.classList.toggle('invalid', !result.valid);
+    input.setAttribute('aria-invalid', String(!result.valid));
+    error.textContent = result.message;
+    bidButton.disabled = !result.valid;
+    return result;
+  };
+
+  input.addEventListener('input', refreshValidation);
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !bidButton.disabled) {
+      event.preventDefault();
+      bidButton.click();
+    }
+  });
+  refreshValidation();
+  setTimeout(() => { input.focus(); input.select(); }, 0);
+
+  bidButton.onclick = () => {
+    const result = refreshValidation();
+    if (!result.valid) return;
+    auctionState.highestBid = result.value;
+    auctionState.highestBidder = player;
+    recordAuctionBid(player, result.value, space.price);
+    notify(`${player.name} 出价 $${result.value}！`);
+    addGameLog('auction', player.name, `为 ${space.name} 出价 $${result.value}`);
+    document.getElementById('auctionModal').classList.add('hidden');
+    advanceAuctionBidder();
+  };
+
+  document.getElementById('btnAuctionPass').onclick = () => {
+    removeActiveAuctionBidder(player.id);
+    recordAuctionPass(player);
+    document.getElementById('auctionModal').classList.add('hidden');
+    notify(`${player.name} 放弃竞拍，本轮不再参与。`);
+    advanceAuctionBidder();
+  };
+}
+
+function aiAuctionBid(player) {
+  const space = SPACES[auctionState.pos];
+  const minBid = getMinimumAuctionBid(auctionState);
+  const maxBid = auctionState.aiMaxBidByPlayer[player.id] || 0;
+  if (minBid <= maxBid) {
+    const bid = chooseAdaptiveAIBid({
+      minBid,
+      maxBid,
+      propertyPrice: space.price,
+      opponentAggression: getAuctionOpponentAggression(player),
+    });
+    auctionState.highestBid = bid;
+    auctionState.highestBidder = player;
+    recordAuctionBid(player, bid, space.price);
+    notify(`${player.name} 出价 $${bid}！`);
+    addGameLog('auction', player.name, `为 ${space.name} 出价 $${bid}`);
+  } else {
+    removeActiveAuctionBidder(player.id);
+    recordAuctionPass(player);
+    notify(`${player.name} 放弃竞拍，本轮不再参与。`);
+  }
+  advanceAuctionBidder();
+}
+
+function advanceAuctionBidder() {
+  auctionState.biddingPlayerIndex = (auctionState.biddingPlayerIndex + 1) % players.length;
+  setTimeout(() => processAuctionBid(), 200);
+}
+
+function finalizeAuction(completionMessage = '') {
+  const space = SPACES[auctionState.pos];
+  const wasDouble = auctionState.isDouble;
+  const completion = auctionState.onComplete;
+  document.getElementById('auctionModal').classList.add('hidden');
+  if (auctionState.highestBidder) {
+    const winner = auctionState.highestBidder;
+    winner.money -= auctionState.highestBid;
+    winner.properties.push(auctionState.pos);
+    notify(completionMessage || `${winner.name} 以 $${auctionState.highestBid} 拍得 ${space.name}！`);
+    addGameLog('auction', winner.name, `以 $${auctionState.highestBid} 拍得 ${space.name}`);
+  } else {
+    notify(`${space.name} 流拍，无人购买。`);
+    addGameLog('auction', '', `${space.name} 流拍`);
+  }
+  auctionState = null;
+  renderBoard(); updateUI({ refreshBoard: false });
+  if (completion) completion();
+  else {
+    const resumeAfterAuction = () => endTurn(wasDouble);
+    if (!checkBankruptcy(players[currentPlayerIndex], null, resumeAfterAuction)) {
+      resumeAfterAuction();
+    }
+  }
+}
+
+// ==================== TRADING SYSTEM ====================
+// 规则文档: 玩家间自由交易地产/现金/出狱卡, 建筑不能交易(第148-155行)
+function canTradeProperty(player, pos) {
+  if (!player.properties.includes(pos)) return false;
+  if (mortgageStatus[pos]) return true;
+  if (houseOwnership[pos]) return false; // 有建筑的地产不能直接交易
+  // 同色组内其他地产有建筑也不能交易
+  const space = SPACES[pos];
+  const group = space.group;
+  if (group) {
+    const groupProps = COLOR_GROUPS[group] || [];
+    for (const p of groupProps) {
+      if (houseOwnership[p]) return false;
+    }
+  }
+  return true;
+}
+
+function validateTradeProposal(rawProposal) {
+  if (!rawProposal || typeof rawProposal !== 'object') {
+    return { ok: false, reason: '交易提案无效' };
+  }
+  const proposal = {
+    ...rawProposal,
+    offer: normalizeTradeBundle(rawProposal.offer || {}),
+    request: normalizeTradeBundle(rawProposal.request || {}),
+  };
+  const from = players.find(player => player.id === proposal.initiatorId);
+  const to = players.find(player => player.id === proposal.recipientId);
+  if (!isPlayerActive(from) || !isPlayerActive(to) || from === to) {
+    return { ok: false, reason: '交易双方无效' };
+  }
+  if (proposal.offer.cash > from.money || proposal.request.cash > to.money) {
+    return { ok: false, reason: '现金不足' };
+  }
+  if (proposal.offer.jailCard && !from.hasGetOutOfJailCard) {
+    return { ok: false, reason: '发起方没有出狱卡' };
+  }
+  if (proposal.request.jailCard && !to.hasGetOutOfJailCard) {
+    return { ok: false, reason: '接收方没有出狱卡' };
+  }
+  if (proposal.offer.jailCard && to.hasGetOutOfJailCard && !proposal.request.jailCard) {
+    return { ok: false, reason: '接收方已有出狱卡' };
+  }
+  if (proposal.request.jailCard && from.hasGetOutOfJailCard && !proposal.offer.jailCard) {
+    return { ok: false, reason: '发起方已有出狱卡' };
+  }
+
+  const allIds = [...proposal.offer.propertyIds, ...proposal.request.propertyIds];
+  if (new Set(allIds).size !== allIds.length) {
+    return { ok: false, reason: '地产重复' };
+  }
+  if (!proposal.offer.propertyIds.every(pos => canTradeProperty(from, pos))) {
+    return { ok: false, reason: '发起方地产不可交易' };
+  }
+  if (!proposal.request.propertyIds.every(pos => canTradeProperty(to, pos))) {
+    return { ok: false, reason: '接收方地产不可交易' };
+  }
+
+  const hasAssets = allIds.length > 0
+    || proposal.offer.cash > 0
+    || proposal.request.cash > 0
+    || proposal.offer.jailCard
+    || proposal.request.jailCard;
+  return hasAssets ? { ok: true } : { ok: false, reason: '报价不能为空' };
+}
+
+function executeTradeProposal(proposal) {
+  const validation = validateTradeProposal(proposal);
+  if (!validation.ok) return false;
+
+  const from = players.find(player => player.id === proposal.initiatorId);
+  const to = players.find(player => player.id === proposal.recipientId);
+  const offer = normalizeTradeBundle(proposal.offer);
+  const request = normalizeTradeBundle(proposal.request);
+
+  from.money += request.cash - offer.cash;
+  to.money += offer.cash - request.cash;
+  from.properties = from.properties
+    .filter(pos => !offer.propertyIds.includes(pos))
+    .concat(request.propertyIds);
+  to.properties = to.properties
+    .filter(pos => !request.propertyIds.includes(pos))
+    .concat(offer.propertyIds);
+  from.hasGetOutOfJailCard = Boolean(from.hasGetOutOfJailCard && !offer.jailCard) || request.jailCard;
+  to.hasGetOutOfJailCard = Boolean(to.hasGetOutOfJailCard && !request.jailCard) || offer.jailCard;
+
+  addGameLog('property', from.name, `与 ${to.name} 完成地产交易`);
+  renderBoard();
+  updateUI({ refreshBoard: false });
+  return true;
+}
+
+function canCounterTrade(proposal) {
+  return (proposal?.counterCount || 0) < 2;
+}
+
+function getTradePropertyValue(player, pos) {
+  const space = SPACES[pos];
+  if (!space) return 0;
+  const groupPositions = COLOR_GROUPS[space.group] || [];
+  const ownedCount = groupPositions.filter(id => player.properties.includes(id)).length;
+  const completesGroup = groupPositions.length > 0
+    && !player.properties.includes(pos)
+    && ownedCount + 1 === groupPositions.length;
+  const progressRatio = groupPositions.length ? ownedCount / groupPositions.length : 0;
+  const rentValue = (space.baseRent || 0) * 4;
+  const completionBonus = completesGroup
+    ? space.price * 0.75
+    : space.price * progressRatio * 0.2;
+  const unmortgageCost = mortgageStatus[pos] ? Math.floor(space.price * 0.55) : 0;
+  return Math.max(0, Math.round(space.price + rentValue + completionBonus - unmortgageCost));
+}
+
+function calculateTradeCashReserve(player) {
+  let opponentRent = 0;
+  for (const opponent of players) {
+    if (opponent === player || !isPlayerActive(opponent)) continue;
+    for (const pos of opponent.properties) {
+      opponentRent = Math.max(opponentRent, calculateRent(pos, opponent, 6, 6));
+    }
+  }
+
+  let plannedBuild = 0;
+  for (const [group, positions] of Object.entries(COLOR_GROUPS)) {
+    if (positions.every(pos => player.properties.includes(pos))) {
+      plannedBuild = Math.max(plannedBuild, HOUSE_COST[group] || 0);
+    }
+  }
+  return Math.max(500, Math.floor(player.money * 0.15), opponentRent, plannedBuild);
+}
+
+function evaluateTradeBundle(player, rawBundle) {
+  const bundle = normalizeTradeBundle(rawBundle);
+  const propertyValue = bundle.propertyIds.reduce(
+    (sum, pos) => sum + getTradePropertyValue(player, pos),
+    0,
+  );
+  const jailCardValue = bundle.jailCard ? (player.inJail ? 900 : 450) : 0;
+  return propertyValue + bundle.cash + jailCardValue;
+}
+
+function getAITradeProfitThreshold() {
+  return [1.08, 1.04, 1.01][stalemateState.tier] || 1.08;
+}
+
+function evaluateTradeProposalForAI(proposal, aiPlayer) {
+  const aiReceives = proposal.recipientId === aiPlayer.id ? proposal.offer : proposal.request;
+  const aiGives = proposal.recipientId === aiPlayer.id ? proposal.request : proposal.offer;
+  const normalizedReceives = normalizeTradeBundle(aiReceives);
+  const normalizedGives = normalizeTradeBundle(aiGives);
+  const reserve = calculateTradeCashReserve(aiPlayer);
+  const cashAfter = aiPlayer.money + normalizedReceives.cash - normalizedGives.cash;
+  if (cashAfter < reserve) return { decision: 'reject', reason: 'cash-reserve' };
+
+  const receivedValue = evaluateTradeBundle(aiPlayer, normalizedReceives);
+  const givenValue = evaluateTradeBundle(aiPlayer, normalizedGives);
+  const threshold = getAITradeProfitThreshold();
+  if (receivedValue >= givenValue * threshold) return { decision: 'accept' };
+  if (canCounterTrade(proposal) && receivedValue >= givenValue * 0.78) {
+    const cashAdjustment = Math.max(
+      50,
+      Math.ceil((givenValue * threshold - receivedValue) / 50) * 50,
+    );
+    return { decision: 'counter', cashAdjustment };
+  }
+  return { decision: 'reject', reason: 'value' };
+}
+
+function createAICounterProposal(proposal, aiPlayer, evaluation) {
+  if (evaluation.decision !== 'counter' || !canCounterTrade(proposal)) return null;
+  const counter = {
+    ...proposal,
+    offer: normalizeTradeBundle(proposal.offer),
+    request: normalizeTradeBundle(proposal.request),
+    counterCount: (proposal.counterCount || 0) + 1,
+    status: 'countered',
+  };
+  const adjustment = Math.max(0, evaluation.cashAdjustment || 0);
+  if (proposal.recipientId === aiPlayer.id) {
+    const payer = players.find(player => player.id === proposal.initiatorId);
+    if (!payer || payer.money < counter.offer.cash + adjustment) return null;
+    counter.offer.cash += adjustment;
+  } else {
+    const payer = players.find(player => player.id === proposal.recipientId);
+    if (!payer || payer.money < counter.request.cash + adjustment) return null;
+    counter.request.cash += adjustment;
+  }
+  return counter;
+}
+
+function getActivePlayers() {
+  return players.filter(isPlayerActive);
+}
+
+function shouldEndGame() {
+  return getActivePlayers().length <= 1;
+}
+
+function getFinalWinner() {
+  return getActivePlayers()[0]
+    || players.reduce((best, player) => player.money > best.money ? player : best);
+}
+
+function getStalemateTier(inactiveRounds) {
+  if (inactiveRounds >= 5) return 2;
+  if (inactiveRounds >= 3) return 1;
+  return 0;
+}
+
+function recordStrategicActivity() {
+  stalemateState.activityThisRound = true;
+  stalemateState.inactiveRounds = 0;
+  stalemateState.tier = 0;
+}
+
+function recordCompletedTurn(playerId) {
+  stalemateState.turnsSeen.add(playerId);
+  const activeIds = getActivePlayers().map(player => player.id);
+  if (!activeIds.length || !activeIds.every(id => stalemateState.turnsSeen.has(id))) return;
+  const previousTier = stalemateState.tier;
+  if (!stalemateState.activityThisRound) stalemateState.inactiveRounds++;
+  stalemateState.tier = getStalemateTier(stalemateState.inactiveRounds);
+  stalemateState.turnsSeen.clear();
+  stalemateState.activityThisRound = false;
+  if (stalemateState.tier > previousTier) {
+    addGameLog('system', '', `市场进入防僵局第 ${stalemateState.tier} 档，AI 将接受更接近公平的报价`);
+  }
+}
+
+function createTradeProposal(initiatorId, recipientId, offer = createTradeBundle(), request = createTradeBundle()) {
+  return {
+    id: nextTradeId++,
+    initiatorId,
+    recipientId,
+    offer: normalizeTradeBundle(offer),
+    request: normalizeTradeBundle(request),
+    counterCount: 0,
+    status: 'draft',
+  };
+}
+
+function retargetTradeProposal(proposal, recipientId, offer) {
+  return {
+    ...proposal,
+    recipientId: Number(recipientId),
+    offer: normalizeTradeBundle(offer),
+    request: createTradeBundle(),
+    status: 'draft',
+  };
+}
+
+function getTradeTargets(player) {
+  return getActivePlayers().filter(target => target.id !== player.id);
+}
+
+function renderTradeAssetList(containerId, owner, selectedIds, editable) {
+  const container = document.getElementById(containerId);
+  if (!owner.properties.length) {
+    container.innerHTML = '<div class="trade-empty">没有可交易地产</div>';
+    return;
+  }
+  container.innerHTML = owner.properties.map(pos => {
+    const space = SPACES[pos];
+    const disabled = !editable || !canTradeProperty(owner, pos);
+    const checked = selectedIds.includes(pos) ? 'checked' : '';
+    const mortgage = mortgageStatus[pos] ? `抵押 · 解押 $${Math.floor(space.price * 0.55)}` : '未抵押';
+    return `<label class="trade-asset-row">
+      <input type="checkbox" data-property-id="${pos}" ${checked} ${disabled ? 'disabled' : ''}>
+      <span>${escapeHTML(space.name)}<small>${mortgage}</small></span>
+      <span>$${space.price}</span>
+    </label>`;
+  }).join('');
+}
+
+function setTradeModalMode(mode) {
+  const composing = mode === 'compose';
+  document.getElementById('tradeComposeButtons').style.display = composing ? 'flex' : 'none';
+  document.getElementById('tradeReviewButtons').style.display = composing ? 'none' : 'flex';
+  for (const id of ['tradeOfferCash', 'tradeRequestCash', 'tradeOfferCard', 'tradeRequestCard']) {
+    document.getElementById(id).disabled = !composing;
+  }
+  document.getElementById('tradeTarget').disabled = !composing || (tradeState?.counterCount || 0) > 0;
+  document.getElementById('btnTradeCounter').disabled = !canCounterTrade(tradeState);
+}
+
+function renderTradeComposer(proposal, mode = 'compose') {
+  const from = players.find(player => player.id === proposal.initiatorId);
+  const to = players.find(player => player.id === proposal.recipientId);
+  const target = document.getElementById('tradeTarget');
+  target.innerHTML = getTradeTargets(from)
+    .map(player => `<option value="${player.id}" ${player.id === to.id ? 'selected' : ''}>${escapeHTML(player.name)}</option>`)
+    .join('');
+  document.getElementById('tradeModalTitle').textContent = mode === 'compose' ? '地产交易' : `${from.name} 向 ${to.name} 的报价`;
+  document.getElementById('tradeOfferTitle').textContent = `${from.name} 提供`;
+  document.getElementById('tradeRequestTitle').textContent = `${to.name} 提供`;
+  renderTradeAssetList('tradeOfferList', from, proposal.offer.propertyIds, mode === 'compose');
+  renderTradeAssetList('tradeRequestList', to, proposal.request.propertyIds, mode === 'compose');
+  document.getElementById('tradeOfferCash').value = proposal.offer.cash;
+  document.getElementById('tradeRequestCash').value = proposal.request.cash;
+  document.getElementById('tradeOfferCard').checked = proposal.offer.jailCard;
+  document.getElementById('tradeOfferCard').disabled = mode !== 'compose' || !from.hasGetOutOfJailCard;
+  document.getElementById('tradeRequestCard').checked = proposal.request.jailCard;
+  document.getElementById('tradeRequestCard').disabled = mode !== 'compose' || !to.hasGetOutOfJailCard;
+  document.getElementById('tradeCounterStatus').textContent = `还价 ${proposal.counterCount || 0}/2`;
+  document.getElementById('tradeSummary').textContent = '抵押地产会保留抵押状态；成交前将再次校验全部资产。';
+  document.getElementById('tradeError').textContent = '';
+  setTradeModalMode(mode);
+}
+
+function readCheckedProperties(containerId) {
+  return [...document.querySelectorAll(`#${containerId} input[data-property-id]:checked`)]
+    .map(input => Number(input.dataset.propertyId));
+}
+
+function readTradeComposer() {
+  return {
+    ...tradeState,
+    recipientId: Number(document.getElementById('tradeTarget').value),
+    offer: {
+      propertyIds: readCheckedProperties('tradeOfferList'),
+      cash: Number(document.getElementById('tradeOfferCash').value),
+      jailCard: document.getElementById('tradeOfferCard').checked,
+    },
+    request: {
+      propertyIds: readCheckedProperties('tradeRequestList'),
+      cash: Number(document.getElementById('tradeRequestCash').value),
+      jailCard: document.getElementById('tradeRequestCard').checked,
+    },
+  };
+}
+
+function changeTradeTarget() {
+  if (!tradeState || (tradeState.counterCount || 0) > 0) return;
+  const offer = {
+    propertyIds: readCheckedProperties('tradeOfferList'),
+    cash: Number(document.getElementById('tradeOfferCash').value),
+    jailCard: document.getElementById('tradeOfferCard').checked,
+  };
+  const recipientId = Number(document.getElementById('tradeTarget').value);
+  tradeState = retargetTradeProposal(tradeState, recipientId, offer);
+  renderTradeComposer(tradeState, 'compose');
+}
+
+function openTradeComposer() {
+  if (debtReliefState) return;
+  const current = players[currentPlayerIndex];
+  if (!tradeWindow.available || tradeWindow.playerId !== current.id || tradeWindow.locked) return;
+  const targets = getTradeTargets(current);
+  if (!targets.length) {
+    notify('当前没有可交易对象。');
+    return;
+  }
+  tradeState = createTradeProposal(current.id, targets[0].id);
+  tradeWindow.locked = true;
+  document.getElementById('btnRoll').disabled = true;
+  renderTradeComposer(tradeState, 'compose');
+  document.getElementById('tradeModal').classList.remove('hidden');
+}
+
+function cancelTrade() {
+  const resume = tradeState?.resume;
+  document.getElementById('tradeModal').classList.add('hidden');
+  consumeTradeWindow();
+  tradeState = null;
+  updateUI({ refreshBoard: false });
+  setStatus('交易已取消，可继续掷骰。');
+  if (typeof resume === 'function') resume();
+}
+
+function submitTradeComposer() {
+  const proposal = readTradeComposer();
+  const validation = validateTradeProposal(proposal);
+  if (!validation.ok) {
+    document.getElementById('tradeError').textContent = validation.reason;
+    return;
+  }
+  tradeState = { ...proposal, status: 'submitted' };
+  consumeTradeWindow();
+  document.getElementById('tradeModal').classList.add('hidden');
+  routeTradeProposal(tradeState);
+}
+
+function showTradeReview(proposal) {
+  tradeState = proposal;
+  renderTradeComposer(proposal, 'review');
+  document.getElementById('tradeModal').classList.remove('hidden');
+}
+
+function showTradeHandoff(targetPlayer, proposal) {
+  tradeState = proposal;
+  const overlay = document.getElementById('passOverlay');
+  overlay.dataset.passPurpose = 'trade';
+  overlay.dataset.tradeTargetId = String(targetPlayer.id);
+  document.getElementById('passPlayerName').textContent = targetPlayer.name;
+  document.getElementById('passPlayerColor').style.backgroundColor = targetPlayer.color;
+  overlay.style.display = 'flex';
+  document.getElementById('tradeModal').classList.add('hidden');
+  setStatus(`请将设备交给 ${targetPlayer.name} 查看报价。`);
+}
+
+function routeTradeProposal(proposal) {
+  const target = players.find(player => player.id === proposal.recipientId);
+  if (target.isHuman) {
+    if (gameMode === 'human') showTradeHandoff(target, proposal);
+    else showTradeReview(proposal);
+    return;
+  }
+  const evaluation = evaluateTradeProposalForAI(proposal, target);
+  if (evaluation.decision === 'accept') {
+    executeTradeProposal(proposal);
+    notify(`${target.name} 接受了交易。`);
+    addGameLog('property', target.name, '接受交易报价');
+    finishTradeFlow();
+  } else if (evaluation.decision === 'counter') {
+    const counter = createAICounterProposal(proposal, target, evaluation);
+    if (counter) {
+      notify(`${target.name} 提出了还价。`);
+      const human = players.find(player => player.id === counter.initiatorId);
+      if (gameMode === 'human') showTradeHandoff(human, counter);
+      else showTradeReview(counter);
+    } else {
+      notify(`${target.name} 拒绝了交易。`);
+      finishTradeFlow();
+    }
+  } else {
+    notify(`${target.name} 拒绝了交易。`);
+    addGameLog('system', target.name, '拒绝交易报价');
+    finishTradeFlow();
+  }
+}
+
+function finishTradeFlow() {
+  const resume = tradeState?.resume;
+  document.getElementById('tradeModal').classList.add('hidden');
+  tradeState = null;
+  tradeWindow.locked = false;
+  updateUI({ refreshBoard: false });
+  const current = players[currentPlayerIndex];
+  if (current?.isHuman) setStatus('交易结束，继续当前回合。');
+  if (typeof resume === 'function') resume();
+}
+
+function acceptTrade() {
+  const success = executeTradeProposal(tradeState);
+  notify(success ? '交易完成。' : '资产状态已变化，交易取消。');
+  if (success) recordStrategicActivity();
+  finishTradeFlow();
+}
+
+function rejectTrade() {
+  addGameLog('system', '', '交易被拒绝');
+  finishTradeFlow();
+}
+
+function prepareCounterTrade() {
+  if (!canCounterTrade(tradeState)) {
+    notify('已达到两轮还价上限。');
+    return;
+  }
+  const previous = tradeState;
+  tradeState = {
+    ...previous,
+    initiatorId: previous.recipientId,
+    recipientId: previous.initiatorId,
+    offer: normalizeTradeBundle(previous.request),
+    request: normalizeTradeBundle(previous.offer),
+    counterCount: (previous.counterCount || 0) + 1,
+    status: 'draft',
+  };
+  renderTradeComposer(tradeState, 'compose');
+}
+
+function scoreAITradeTarget(aiPlayer, owner, pos) {
+  const group = COLOR_GROUPS[SPACES[pos].group] || [];
+  const aiOwned = group.filter(id => aiPlayer.properties.includes(id)).length;
+  const ownerOwned = group.filter(id => owner.properties.includes(id)).length;
+  const completesAIGroup = group.length > 0 && aiOwned + 1 === group.length;
+  const blocksOwnerGroup = group.length > 0 && ownerOwned === group.length - 1;
+  return (completesAIGroup ? 1000 : 0) + (blocksOwnerGroup ? 350 : 0) + aiOwned * 80;
+}
+
+function buildAIProposalForTarget(aiPlayer, owner) {
+  const candidate = owner.properties
+    .filter(pos => canTradeProperty(owner, pos))
+    .map(pos => ({ pos, score: scoreAITradeTarget(aiPlayer, owner, pos) }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)[0];
+  if (!candidate) return null;
+  const cash = Math.ceil(getTradePropertyValue(aiPlayer, candidate.pos) / 50) * 50;
+  if (aiPlayer.money - cash < calculateTradeCashReserve(aiPlayer)) return null;
+  return createTradeProposal(
+    aiPlayer.id,
+    owner.id,
+    { propertyIds: [], cash, jailCard: false },
+    { propertyIds: [candidate.pos], cash: 0, jailCard: false },
+  );
+}
+
+function resolveAIToAITrade(proposal) {
+  const target = players.find(player => player.id === proposal.recipientId);
+  const evaluation = evaluateTradeProposalForAI(proposal, target);
+  if (evaluation.decision === 'accept') {
+    if (executeTradeProposal(proposal)) recordStrategicActivity();
+    return;
+  }
+  if (evaluation.decision !== 'counter') return;
+  const counter = createAICounterProposal(proposal, target, evaluation);
+  if (!counter) return;
+  const initiator = players.find(player => player.id === counter.recipientId);
+  const response = evaluateTradeProposalForAI(counter, initiator);
+  if (response.decision === 'accept' && executeTradeProposal(counter)) recordStrategicActivity();
+}
+
+function attemptAITradeAtTurnStart(aiPlayer, done) {
+  const candidates = getActivePlayers()
+    .filter(player => player.id !== aiPlayer.id)
+    .filter(player => allowAIInitiatedHumanTrades || !player.isHuman);
+  const proposal = candidates
+    .map(player => buildAIProposalForTarget(aiPlayer, player))
+    .filter(Boolean)
+    .sort((a, b) => evaluateTradeBundle(aiPlayer, b.request) - evaluateTradeBundle(aiPlayer, a.request))[0];
+  if (!proposal) {
+    done();
+    return;
+  }
+  consumeTradeWindow();
+  const target = players.find(player => player.id === proposal.recipientId);
+  if (target.isHuman) {
+    proposal.resume = done;
+    tradeState = proposal;
+    if (gameMode === 'human') showTradeHandoff(target, proposal);
+    else showTradeReview(proposal);
+    return;
+  }
+  resolveAIToAITrade(proposal);
+  done();
+}
+
+// ==================== BANKRUPTCY LADDER ====================
+// 规则文档: 破产阶梯 卖建筑→抵押地产→出售资产→破产(第226-232行)
+function transferBankruptAssetsToCreditor(debtor, creditor) {
+  creditor.properties.push(...debtor.properties);
+  debtor.properties = [];
+  if (debtor.hasGetOutOfJailCard) {
+    creditor.hasGetOutOfJailCard = true;
+    debtor.hasGetOutOfJailCard = false;
+  }
+}
+
+function detachBankruptProperties(debtor) {
+  const properties = [...debtor.properties];
+  debtor.properties = [];
+  return properties;
+}
+
+function eliminatePlayer(player) {
+  player.bankrupt = true;
+  player.inJail = false;
+  player.jailTurns = 0;
+  player.money = 0;
+  if (tradeState && [tradeState.initiatorId, tradeState.recipientId].includes(player.id)) {
+    document.getElementById('tradeModal')?.classList.add('hidden');
+    tradeState = null;
+    tradeWindow.locked = false;
+    notify('交易因玩家破产而取消。');
+  }
+}
+
+function liquidatePropertiesByAuction(propertyIds, done) {
+  const queue = [...propertyIds];
+  const next = () => {
+    if (queue.length === 0) {
+      done();
+      return;
+    }
+    const pos = queue.shift();
+    addGameLog('auction', '', `${SPACES[pos].name} 进入破产清算拍卖`);
+    startAuction(pos, false, {
+      eligiblePlayers: getActivePlayers(),
+      onComplete: next,
+    });
+  };
+  next();
+}
+
+function finalizePlayerBankruptcy(player, creditor = null) {
+  notify(`${player.name} 破产了！资产将被清算...`);
+  addGameLog('system', player.name, '宣布破产，资产进入清算');
+  const activeCreditor = creditor && creditor !== player && isPlayerActive(creditor)
+    ? creditor
+    : null;
+  const liquidationProperties = activeCreditor ? [] : detachBankruptProperties(player);
+
+  if (activeCreditor) {
+    transferBankruptAssetsToCreditor(player, activeCreditor);
+    notify(`${activeCreditor.name} 获得了 ${player.name} 的可转移资产。`);
+    addGameLog('property', activeCreditor.name, `接收 ${player.name} 的全部地产`);
+  } else {
+    player.hasGetOutOfJailCard = false;
+  }
+
+  eliminatePlayer(player);
+  renderBoard();
+  updateUI({ refreshBoard: false });
+
+  if (shouldEndGame()) {
+    setTimeout(() => endGame(), 800);
+    return true;
+  }
+
+  const resumeAfterLiquidation = () => {
+    if (!gameOver) endTurn(false);
+  };
+  if (liquidationProperties.length > 0) {
+    liquidatePropertiesByAuction(liquidationProperties, resumeAfterLiquidation);
+  } else {
+    resumeAfterLiquidation();
+  }
+  return true;
+}
+
+function startHumanDebtRelief(player, creditor, resume) {
+  if (debtReliefState?.playerId === player.id) return;
+  debtReliefState = {
+    playerId: player.id,
+    creditorId: creditor?.id ?? null,
+    initialDebt: Math.max(1, Math.abs(player.money)),
+    resume: typeof resume === 'function' ? resume : null,
+    completed: false,
+  };
+  consumeTradeWindow();
+  addGameLog('system', player.name, `进入债务处置，需筹集 $${Math.abs(player.money)}`);
+  showDebtReliefModal();
+}
+
+function finishDebtRelief(shouldResume) {
+  const state = debtReliefState;
+  if (!state || state.completed) return;
+  state.completed = true;
+  const resume = state.resume;
+  debtReliefState = null;
+  document.getElementById('debtReliefModal')?.classList.add('hidden');
+  if (shouldResume && typeof resume === 'function') resume();
+}
+
+function autoResolveAIDebt(player) {
+  // 卖房需要多轮扫描：出售后面的房产会降低 maxHouses，让前面的房产重新可出售
+  let changed = true;
+  while (changed && player.money < 0) {
+    changed = false;
+    for (const pos of [...player.properties]) {
+      while (player.money < 0 && canSellHouse(player, pos)) {
+        sellHouse(player, pos);
+        changed = true;
+      }
+    }
+  }
+  for (const pos of [...player.properties]) {
+    if (player.money >= 0) break;
+    if (canMortgage(player, pos)) mortgageProperty(player, pos);
+  }
+  return player.money >= 0;
+}
+
+function checkBankruptcy(player, creditor = null, resume = null) {
+  if (player.money >= 0 || player.bankrupt) return false;
+
+  if (player.isHuman) {
+    const actions = getDebtReliefActions(player);
+    if (hasDebtReliefActions(actions)) {
+      startHumanDebtRelief(player, creditor, resume);
+      return true;
+    }
+    return finalizePlayerBankruptcy(player, creditor);
+  }
+
+  if (autoResolveAIDebt(player)) {
+    notify(`${player.name} 通过自动处置资产偿清了债务。`);
+    return false;
+  }
+  return finalizePlayerBankruptcy(player, creditor);
+}
+
+function endGame() {
+  gameOver = true;
+  document.getElementById('btnRoll').disabled = true;
+  document.getElementById('passOverlay').style.display = 'none';
+  document.getElementById('turnIndicator').style.display = 'none';
+
+  const winner = getFinalWinner();
+  const humanWon = winner.isHuman;
+  addGameLog('system', winner.name, `以 $${winner.money} 赢得比赛`);
+
+  if (gameMode === 'human') {
+    document.getElementById('gameOverTitle').textContent = '游 戏 结 束';
+    document.getElementById('gameOverWinner').textContent = `${winner.name} 以 $${winner.money} 赢得比赛！`;
+  } else {
+    document.getElementById('gameOverTitle').textContent = humanWon ? '恭 喜 胜 利！' : '游 戏 结 束';
+    document.getElementById('gameOverWinner').textContent = humanWon
+      ? `你以 $${winner.money} 赢得比赛！`
+      : `${winner.name} 以 $${winner.money} 获胜...再来一局吧！`;
+  }
+  document.getElementById('gameOverOverlay').style.display = 'flex';
+}
+
+// ==================== PASS DEVICE (Human vs Human) ====================
+function showPassDevice() {
+  const player = players[currentPlayerIndex];
+  document.getElementById('passOverlay').dataset.passPurpose = 'turn';
+  document.getElementById('passPlayerName').textContent = player.name;
+  const colorEl = document.getElementById('passPlayerColor');
+  colorEl.style.backgroundColor = player.color;
+  document.getElementById('passOverlay').style.display = 'flex';
+  document.getElementById('btnRoll').disabled = true;
+  setStatus(`等待 ${player.name} 接手...`);
+}
+
+function confirmPassDevice() {
+  const overlay = document.getElementById('passOverlay');
+  if (overlay.dataset.passPurpose === 'trade') {
+    overlay.style.display = 'none';
+    overlay.dataset.passPurpose = '';
+    showTradeReview(tradeState);
+    return;
+  }
+  const player = players[currentPlayerIndex];
+  overlay.style.display = 'none';
+  document.getElementById('btnRoll').disabled = false;
+  setStatus(`${player.name} 的回合，点击掷骰子！`);
+  showTurnIndicator(player);
+}
+
+function showTurnIndicator(player) {
+  const indicator = document.getElementById('turnIndicator');
+  const text = document.getElementById('turnIndicatorText');
+  text.innerHTML = `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${player.color};margin-right:8px;vertical-align:middle;"></span>${escapeHTML(player.name)} 的回合`;
+  indicator.style.display = 'block';
+  // Auto-hide after 3 seconds
+  setTimeout(() => { indicator.style.display = 'none'; }, 3000);
+}
+
+// ==================== UI ====================
+function updateUI(options = {}) {
+  const { refreshBoard = true } = options;
+  const container = document.getElementById('playerInfo');
+  container.innerHTML = players.map(p => {
+    const safeName = escapeHTML(p.name);
+    const safeToken = escapeHTML(gameMode === 'human' ? p.name.charAt(0) : (p.isHuman ? '你' : 'C'));
+    return `
+    <div class="player-item" style="${p.bankrupt ? 'opacity:0.45;filter:grayscale(0.7);' : ''}${currentPlayerIndex === players.indexOf(p) && !p.bankrupt ? 'border-color:var(--gold);background:rgba(201,168,76,0.08);box-shadow:0 0 20px rgba(201,168,76,0.15);' : ''}">
+      <div class="player-token" style="background:linear-gradient(135deg,${p.color},${p.color}dd);">${safeToken}</div>
+      <div class="player-details">
+        <div class="player-name">${safeName} ${p.bankrupt ? '· 已破产' : (p.inJail ? '🔒' : '')}</div>
+        <div class="player-money">$${p.money}</div>
+        <div class="player-props">${p.properties.length} 处地产</div>
+      </div>
+    </div>
+  `;
+  }).join('');
+
+  updatePropertyPanel();
+  updateHousePanel();
+  if (refreshBoard) renderBoard();
+
+  const btn = document.getElementById('btnRoll');
+  if (btn && !gameOver) {
+    btn.disabled = !canCurrentPlayerRoll();
+  }
+  const tradeBtn = document.getElementById('btnTrade');
+  if (tradeBtn) {
+    const current = players[currentPlayerIndex];
+    tradeBtn.disabled = !current?.isHuman
+      || !isPlayerActive(current)
+      || !tradeWindow.available
+      || tradeWindow.playerId !== current.id
+      || tradeWindow.locked
+      || Boolean(tradeState)
+      || Boolean(debtReliefState);
+  }
+  const bailBtn = document.getElementById('btnBail');
+  if (bailBtn) {
+    const cp = players[currentPlayerIndex];
+    bailBtn.style.display = (cp.inJail && cp.isHuman && cp.money >= 500) ? '' : 'none';
+  }
+}
+
+function updatePropertyPanel() {
+  const panel = document.getElementById('propertyPanel');
+  const list = document.getElementById('propertyList');
+  const player = players[currentPlayerIndex]; // Show current player's properties
+  if (player.properties.length === 0) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  list.innerHTML = player.properties.map(pos => {
+    const s = SPACES[pos];
+    const houses = houseOwnership[pos] || 0;
+    const houseLabel = houses === 0 ? '' : ` [${HOUSE_LEVEL_NAMES[houses]}]`;
+    const mortgaged = mortgageStatus[pos];
+    return `<div style="margin:2px 0;display:flex;align-items:center;gap:6px;">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${s.group && GROUP_COLORS[s.group] ? GROUP_COLORS[s.group] : '#888'};flex-shrink:0;"></span>
+      ${mortgaged ? '🔒' : ''}${s.name}${houseLabel}
+      <span style="color:var(--gold-light);margin-left:auto;">$${s.price}</span>
+      ${!mortgaged && houses === 0 && player.isHuman ? `<button class="btn-house" style="font-size:0.5rem;padding:1px 4px;" onclick="mortgageProperty(players[${currentPlayerIndex}],${pos})">抵押</button>` : ''}
+      ${mortgaged && player.isHuman ? `<button class="btn-house" style="font-size:0.5rem;padding:1px 4px;" onclick="unmortgageProperty(players[${currentPlayerIndex}],${pos})">解押</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function updateHousePanel() {
+  const panel = document.getElementById('housePanel');
+  const list = document.getElementById('houseList');
+  const player = players[currentPlayerIndex]; // Show current player's properties
+  if (player.properties.length === 0) { panel.style.display = 'none'; return; }
+
+  let html = '';
+  const groups = Object.entries(COLOR_GROUPS);
+  for (const [group, positions] of groups) {
+    const owned = positions.filter(p => player.properties.includes(p));
+    if (owned.length !== positions.length) continue;
+
+    const cost = HOUSE_COST[group];
+    html += `<div style="font-size:0.6rem;color:var(--gold);margin:6px 0 2px;letter-spacing:1px;">${group.toUpperCase()} (建房费: $${cost})</div>`;
+    for (const pos of owned) {
+      const s = SPACES[pos];
+      const houses = houseOwnership[pos] || 0;
+      const canBuild = canBuildHouse(player, pos);
+      const label = HOUSE_LEVEL_NAMES[houses] || `${houses}级`;
+      const canSell = canSellHouse(player, pos) && player.isHuman;
+      const sellRefund = houses > 0 ? Math.floor(HOUSE_COST[group] * 0.5) : 0;
+      html += `<div class="house-upgrade-item">
+        <div class="prop-info">
+          <div class="prop-name-u">${s.name}</div>
+          <div class="prop-houses">${label} | 租金: $${houses > 0 ? s.baseRent * RENT_MULTIPLIER[houses] : s.baseRent}</div>
+        </div>
+        ${canSell ? `<button class="btn-house" style="border-color:#e74c3c;color:#e74c3c;" onclick="sellHouse(players[${currentPlayerIndex}],${pos})">出售 +$${sellRefund}</button>` : ''}
+        <button class="btn-house" ${canBuild ? `onclick="buildHouse(players[${currentPlayerIndex}],${pos})"` : 'disabled'}>
+          ${houses >= 4 ? '满级' : `升级 $${cost}`}
+        </button>
+      </div>`;
+    }
+  }
+
+  if (html) {
+    panel.style.display = 'block';
+    list.innerHTML = html;
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+function setStatus(msg) { const el = document.getElementById('gameStatus'); if (el) el.textContent = msg; }
+
+// ==================== PENALTY ANIMATION ====================
+function showPenaltyAnimation(amount) {
+  const container = document.getElementById('penaltyContainer');
+  const el = document.createElement('div');
+  el.className = 'penalty-overlay';
+  el.innerHTML = `<div class="penalty-burst">
+    <div class="penalty-amount">-$${amount}</div>
+    <div class="penalty-label">支付罚金</div>
+  </div>`;
+  container.appendChild(el);
+  setTimeout(() => el.classList.add('fade-out'), 920);
+  setTimeout(() => el.remove(), 1200);
+}
+
+// ==================== DICE RESULT OVERLAY ====================
+function showDiceResult(d1, d2, isDouble, callback) {
+  const overlay = document.getElementById('diceResultOverlay');
+  const die1HTML = renderDiceHTML(d1);
+  const die2HTML = renderDiceHTML(d2);
+  const total = d1 + d2;
+
+  overlay.innerHTML = `
+    <div class="dice-result-content">
+      <div class="dice-result-dice">
+        <div class="dice-result-die">${die1HTML}</div>
+        <div class="dice-result-die">${die2HTML}</div>
+      </div>
+      <div class="dice-result-info">
+        <div class="dice-result-total">${total}</div>
+        <div class="dice-result-label">${d1} + ${d2}</div>
+        ${isDouble ? '<div class="dice-result-double">★ DOUBLES ★</div>' : ''}
+      </div>
+    </div>
+  `;
+  overlay.style.display = 'flex';
+  overlay.classList.remove('fade-out');
+
+  setTimeout(() => {
+    overlay.classList.add('fade-out');
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      overlay.classList.remove('fade-out');
+      if (callback) callback();
+    }, 300);
+  }, 1500);
+}
+
+function renderDiceHTML(value) {
+  const dotMap = {
+    1: [[1,1]], 2: [[0,2],[2,0]], 3: [[0,2],[1,1],[2,0]],
+    4: [[0,0],[0,2],[2,0],[2,2]], 5: [[0,0],[0,2],[1,1],[2,0],[2,2]],
+    6: [[0,0],[0,2],[1,0],[1,2],[2,0],[2,2]],
+  };
+  const dots = dotMap[value];
+  const grid = Array(9).fill('<span></span>');
+  dots.forEach(([r, c]) => { grid[r * 3 + c] = '<span class="rdot"></span>'; });
+  return grid.join('');
+}
+
+// ==================== ANIMATED MOVEMENT ====================
+function getCellElement(pos) {
+  const grid = document.getElementById('boardGrid');
+  const cells = grid.querySelectorAll('.cell');
+  for (const cell of cells) {
+    if (cell.dataset.position === String(pos)) return cell;
+  }
+  return null;
+}
+
+function animateMove(player, path, finalPos, passedGo, onComplete) {
+  const startPos = player.position;
+  const boardGrid = document.getElementById('boardGrid');
+  const gridRect = boardGrid.getBoundingClientRect();
+
+  const token = document.createElement('div');
+  token.className = 'moving-token';
+  token.style.color = player.color;
+  token.style.background = player.color;
+  boardGrid.appendChild(token);
+
+  const startCell = getCellElement(startPos);
+  if (startCell) {
+    const sc = startCell.getBoundingClientRect();
+    token.style.left = (sc.left - gridRect.left + sc.width / 2 - 8) + 'px';
+    token.style.top = (sc.top - gridRect.top + sc.height / 2 - 8) + 'px';
+  }
+
+  let stepIndex = 0;
+  const stepDelay = 180;
+
+  function doStep() {
+    if (stepIndex >= path.length) {
+      token.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      const finalCell = getCellElement(finalPos);
+      if (finalCell) {
+        const fc = finalCell.getBoundingClientRect();
+        token.style.left = (fc.left - gridRect.left + fc.width / 2 - 8) + 'px';
+        token.style.top = (fc.top - gridRect.top + fc.height / 2 - 8) + 'px';
+      }
+      setTimeout(() => {
+        token.remove();
+        player.position = finalPos;
+        if (passedGo) {
+          notify(`${player.name} 经过起点，获得 $1000！`);
+          addGameLog('gain', player.name, '经过起点，获得 $1000');
+        }
+        if (onComplete) onComplete();
+      }, 350);
+      return;
+    }
+
+    const currentPos = path[stepIndex];
+    const cell = getCellElement(currentPos);
+    if (cell) {
+      const cr = cell.getBoundingClientRect();
+      token.style.transition = `all ${stepDelay * 0.8}ms ease-out`;
+      token.style.left = (cr.left - gridRect.left + cr.width / 2 - 8) + 'px';
+      token.style.top = (cr.top - gridRect.top + cr.height / 2 - 8) + 'px';
+
+      const trace = document.createElement('div');
+      trace.className = 'path-trace';
+      trace.style.background = player.color;
+      trace.style.left = (cr.left - gridRect.left + cr.width / 2 - 5) + 'px';
+      trace.style.top = (cr.top - gridRect.top + cr.height / 2 - 5) + 'px';
+      boardGrid.appendChild(trace);
+      setTimeout(() => trace.remove(), 600);
+    }
+
+    stepIndex++;
+    setTimeout(doStep, stepDelay);
+  }
+
+  doStep();
+}
+
+// ==================== NOTIFICATIONS ====================
+function notify(msg) {
+  const container = document.getElementById('notificationContainer');
+  const el = document.createElement('div');
+  el.className = 'notification';
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { el.classList.add('fade-out'); setTimeout(() => el.remove(), 300); }, 2500);
+}
+
+// ==================== INIT ====================
+setTimeout(() => {
+  const d1 = document.getElementById('dice1'), d2 = document.getElementById('dice2');
+  if (d1) renderDice(d1, 1);
+  if (d2) renderDice(d2, 1);
+}, 100);
+</script>
+<script>
+window.addEventListener('beforeinstallprompt', (event) => {
+  window.mobileInstallPrompt = event;
+  const button = document.getElementById('mobileInstallBtn');
+  if (button) button.hidden = false;
+});
+
+document.getElementById('mobileInstallBtn')?.addEventListener('click', async () => {
+  const prompt = window.mobileInstallPrompt;
+  if (!prompt) return;
+  prompt.prompt();
+  await prompt.userChoice;
+  window.mobileInstallPrompt = null;
+  document.getElementById('mobileInstallBtn').hidden = true;
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
